@@ -1,0 +1,2702 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f1226">
+<!-- İçerik güvenlik politikası: yalnızca oyunun kendi dosyaları; dış kaynaktan kod, çerçeve, form yok; dışarıya bağlantı yok -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gleam Pop">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Gleam Pop</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+:root{
+  --bg:#0f1226; --panel:rgba(255,255,255,.07); --line:rgba(255,255,255,.1);
+  --text:#f1f2fb; --muted:#a3a7c7; --accent:#ffd166; --danger:#ff6b6b;
+}
+/* Nunito yazı tipi: SIL Open Font License 1.1 (fonts/OFL.txt) - ticari kullanım serbest */
+@font-face{font-family:'Nunito';src:url('fonts/Nunito.ttf') format('truetype');font-weight:200 1000;font-display:swap}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:radial-gradient(120% 80% at 50% 0%,#2a2f6b 0%,var(--bg) 62%) fixed,var(--bg);
+  color:var(--text);
+  font-family:'Nunito',system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;min-height:100dvh;
+  padding:calc(10px + env(safe-area-inset-top)) 16px calc(10px + env(safe-area-inset-bottom));
+  overflow:hidden;overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font-family:inherit}
+.wrap{
+  width:min(100%,480px,calc(100vh - 290px));
+  width:min(100%,480px,calc(100dvh - 290px));
+  min-width:260px;
+  display:flex;flex-direction:column;gap:11px;
+}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:clamp(20px,6vw,28px);font-weight:800;letter-spacing:.5px;
+  background:linear-gradient(90deg,#ff8a8a,#ffd166,#8ef0a8,#8ec5ff,#e0a8ff);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.icons{display:flex;gap:8px}
+.icon-btn{
+  width:40px;height:40px;border-radius:12px;border:1px solid var(--line);flex:none;
+  background:var(--panel);color:var(--text);display:grid;place-items:center;cursor:pointer;
+}
+.icon-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn:active{transform:scale(.94)}
+.coin{display:inline-block;width:1em;height:1em;border-radius:50%;vertical-align:-.15em;flex:none;
+  background:radial-gradient(circle at 35% 30%,#fff3b0,#ffcb3d 45%,#c98a00);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.sw8{display:inline-block;width:.85em;height:.85em;border-radius:28%;vertical-align:-.1em;box-shadow:0 0 0 2px rgba(255,255,255,.8)}
+
+.scores{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 6px;text-align:center}
+.card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.card .val{font-size:clamp(18px,5.5vw,24px);font-weight:800;font-variant-numeric:tabular-nums;display:inline-block}
+.card .val.bump{animation:bump .3s ease-out}
+.card.low .val{color:var(--danger)}
+@keyframes bump{40%{transform:scale(1.25);color:var(--accent)}}
+
+.progress{position:relative;height:22px;border-radius:11px;background:var(--panel);border:1px solid var(--line);overflow:hidden}
+.progress .bar{position:absolute;inset:0 auto 0 0;width:0;border-radius:11px;
+  background:linear-gradient(90deg,#3ddc7a,#ffd166);transition:width .45s ease-out}
+.progress span{position:relative;display:block;text-align:center;font-size:12px;font-weight:700;line-height:20px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+body.endless .progress{display:none}
+
+#board{
+  position:relative;width:100%;aspect-ratio:1/1;border-radius:18px;overflow:hidden;
+  background:repeating-conic-gradient(rgba(255,255,255,.045) 0 25%,transparent 0 50%) 0 0/25% 25%,rgba(255,255,255,.035);
+  border:1px solid var(--line);
+  box-shadow:0 20px 50px rgba(0,0,0,.45),inset 0 0 30px rgba(0,0,0,.3);
+  touch-action:none;cursor:pointer;transition:box-shadow .2s;
+}
+#board.aiming{cursor:crosshair;box-shadow:0 0 0 3px #ffd166,0 0 30px rgba(255,209,102,.35),inset 0 0 30px rgba(0,0,0,.3)}
+.tile{
+  position:absolute;left:0;top:0;width:12.5%;height:12.5%;
+  transition:transform 200ms cubic-bezier(.34,1.18,.64,1);
+  will-change:transform;
+}
+.gem{
+  position:absolute;inset:7%;border-radius:26%;overflow:hidden;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.22),inset 0 2px 0 rgba(255,255,255,.35),0 3px 6px rgba(0,0,0,.35);
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+.gem::after{content:"";position:absolute;left:14%;top:9%;width:46%;height:26%;border-radius:50%;
+  background:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,0))}
+.gem::before{content:"";position:absolute;inset:22%;border-radius:30%;
+  background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.35),rgba(255,255,255,0) 70%)}
+.gem i{position:absolute;top:-25%;left:-70%;width:38%;height:150%;transform:rotate(25deg);opacity:0;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.8),rgba(255,255,255,0))}
+.g0{background:radial-gradient(circle at 32% 25%,#ff9a9a,#e23b4a 55%,#9e1528)}
+.g1{background:radial-gradient(circle at 32% 25%,#ffe49a,#f5a524 55%,#b06404)}
+.g2{background:radial-gradient(circle at 32% 25%,#9af5b4,#22b85a 55%,#0e6e36)}
+.g3{background:radial-gradient(circle at 32% 25%,#9acbff,#2f7bf0 55%,#163fa0)}
+.g4{background:radial-gradient(circle at 32% 25%,#e6b4ff,#9b4dea 55%,#5a1b9c)}
+.g5{background:radial-gradient(circle at 32% 25%,#ffc2e4,#f0459f 55%,#a3165f)}
+.tile.sel{z-index:2}
+.tile.sel .gem{transform:scale(1.1);box-shadow:inset 0 -3px 0 rgba(0,0,0,.22),inset 0 2px 0 rgba(255,255,255,.35),0 0 0 3px #fff,0 6px 14px rgba(0,0,0,.5)}
+.tile.hint .gem{animation:hint 1s ease-in-out infinite}
+.tile.pop{z-index:3}
+.tile.pop .gem{animation:pop .28s ease-in forwards}
+.tile.shake .gem{animation:shake .3s ease}
+.tile.shine .gem i{animation:shine .8s ease-in-out}
+.tile.land .gem{animation:land .28s ease-out}
+.tile.flip .gem{animation:flip .34s ease-in-out}
+@keyframes hint{50%{transform:scale(1.12);filter:brightness(1.25)}}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.28);filter:brightness(1.7)}100%{transform:scale(0) rotate(25deg);opacity:0}}
+@keyframes shake{25%{transform:translateX(-8%)}75%{transform:translateX(8%)}}
+@keyframes shine{0%{left:-70%;opacity:1}100%{left:130%;opacity:1}}
+@keyframes land{0%{transform:translateY(6%) scale(1.1,.86)}55%{transform:translateY(-2%) scale(.96,1.05)}100%{transform:none}}
+@keyframes flip{50%{transform:scale(0) rotate(90deg)}}
+/* Özel bloklar: ışın (satır/sütun), bomba (3x3), prizma (bir rengin hepsi) */
+.gem b{position:absolute;inset:0;display:none;pointer-events:none;border-radius:inherit}
+.tile.sp-h .gem b,.tile.sp-v .gem b{display:block;
+  background:linear-gradient(180deg,transparent 36%,rgba(255,255,255,.55) 42%,#fff 47%,#fff 53%,rgba(255,255,255,.55) 58%,transparent 64%);
+  animation:beamGlow 1.3s ease-in-out infinite}
+.tile.sp-h .gem b::before,.tile.sp-h .gem b::after,.tile.sp-v .gem b::before,.tile.sp-v .gem b::after{content:"";position:absolute;top:50%;width:0;height:0}
+.tile.sp-h .gem b::before,.tile.sp-v .gem b::before{left:6%;border-top:9px solid transparent;border-bottom:9px solid transparent;border-right:9px solid #fff;margin-top:-9px}
+.tile.sp-h .gem b::after,.tile.sp-v .gem b::after{right:6%;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:9px solid #fff;margin-top:-9px}
+.tile.sp-v .gem b{transform:rotate(90deg)}
+@keyframes beamGlow{50%{opacity:.55}}
+.tile.sp-b .gem{border-radius:50%}
+.tile.sp-b .gem b{display:block;border-radius:50%;
+  background:radial-gradient(circle,#fff 0 13%,rgba(255,255,255,.75) 19%,rgba(255,255,255,0) 44%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.6),inset 0 0 12px rgba(255,255,255,.5);animation:bombPulse .9s ease-in-out infinite}
+@keyframes bombPulse{50%{transform:scale(.82);opacity:.8}}
+.gem.gp{background:#2a1f4a}
+.tile.sp-p .gem b{display:block;inset:-30%;border-radius:0;
+  background:conic-gradient(#ff6b78,#ffbe3d,#3ddc7a,#5b9bff,#bd7bff,#ff6fbf,#ff6b78);animation:prismSpin 2.4s linear infinite}
+.tile.sp-p .gem::before{z-index:1;inset:30%;border-radius:50%;background:radial-gradient(circle,#fff 0 30%,rgba(255,255,255,0) 72%)}
+.tile.sp-p .gem::after{z-index:1}
+@keyframes prismSpin{to{transform:rotate(360deg)}}
+.tile.forge{z-index:2}
+.tile.forge .gem{animation:forge .5s ease-out}
+@keyframes forge{0%{transform:scale(.5);filter:brightness(2.4)}55%{transform:scale(1.3);filter:brightness(1.6)}100%{transform:none}}
+/* Engeller: buz (karenin üstünde, taş geçince kırılır) ve taş (eşleşmez, yanında patlama olunca çatlar) */
+.ice{position:absolute;left:0;top:0;width:12.5%;height:12.5%;pointer-events:none;z-index:1;transition:opacity .3s}
+.ice::before{content:"";position:absolute;inset:3%;border-radius:22%;
+  background:linear-gradient(135deg,rgba(240,250,255,.6),rgba(170,215,255,.2) 40%,rgba(200,232,255,.22) 60%,rgba(240,250,255,.5));
+  border:2px solid rgba(225,243,255,.95);box-shadow:inset 0 0 12px rgba(255,255,255,.7),0 0 10px rgba(150,210,255,.55)}
+.ice.l2::before{background:linear-gradient(135deg,rgba(235,248,255,.62),rgba(170,215,255,.3) 45%,rgba(235,248,255,.5));border-width:3px}
+.ice.l2::after{content:"";position:absolute;inset:3%;border-radius:22%;opacity:.7;
+  background:linear-gradient(45deg,transparent 46%,rgba(255,255,255,.8) 48%,transparent 51%),linear-gradient(-30deg,transparent 60%,rgba(255,255,255,.7) 62%,transparent 65%)}
+.ice.gone{opacity:0}
+.ice.crack{animation:iceHit .3s ease}
+@keyframes iceHit{40%{transform:scale(1.12)}}
+.gem.gs{background:radial-gradient(circle at 32% 25%,#d9d3ca,#958d84 55%,#5d5650);border-radius:22%}
+.tile.stone .gem b{display:block;border-radius:inherit;box-shadow:inset 0 0 0 3px rgba(60,52,46,.55);
+  background:radial-gradient(circle at 24% 72%,rgba(70,62,56,.45) 0 7%,transparent 8%),radial-gradient(circle at 72% 30%,rgba(70,62,56,.4) 0 6%,transparent 7%)}
+.tile.stone.hp2 .gem{background:radial-gradient(circle at 32% 25%,#b9b2a8,#77706a 55%,#45403b)}
+.tile.stone.hp2 .gem b{box-shadow:inset 0 0 0 4px rgba(40,34,30,.6),inset 0 0 0 7px rgba(200,190,180,.25)}
+.tile.stone.hp1 .gem b{background:linear-gradient(60deg,transparent 47%,rgba(40,34,30,.75) 49%,transparent 52%),linear-gradient(-50deg,transparent 54%,rgba(40,34,30,.65) 56%,transparent 59%),linear-gradient(10deg,transparent 30%,rgba(40,34,30,.5) 32%,transparent 35%)}
+.tile.stone.hit .gem{animation:shake .3s ease}
+.sw8.swice{background:linear-gradient(135deg,#eaf7ff,#9fd2ff)}
+.sw8.swstone{background:radial-gradient(circle at 32% 25%,#d9d3ca,#958d84 55%,#5d5650)}
+.node .badge.gem.bice{background:linear-gradient(135deg,#eaf7ff,#9fd2ff)}
+.node .badge.gem.bstone{background:radial-gradient(circle at 32% 25%,#d9d3ca,#958d84 55%,#5d5650)}
+/* Öğretici: kaydırma gösteren parmak izi */
+#tut{position:absolute;inset:0;z-index:7;pointer-events:none}
+#tut .finger{position:absolute;width:12.5%;height:12.5%;left:0;top:0;animation:tutSwipe 1.6s ease-in-out infinite}
+#tut .finger::before{content:"";position:absolute;left:30%;top:30%;width:40%;height:40%;border-radius:50%;background:rgba(255,255,255,.95);
+  box-shadow:0 0 0 6px rgba(255,255,255,.35),0 0 18px #fff}
+@keyframes tutSwipe{0%,15%{transform:translate(var(--x0),var(--y0));opacity:0}25%{opacity:1}70%{transform:translate(var(--x1),var(--y1));opacity:1}85%,100%{transform:translate(var(--x1),var(--y1));opacity:0}}
+.tutTip{position:absolute;left:50%;transform:translateX(-50%);top:3%;width:max-content;max-width:90%;z-index:8;pointer-events:none;
+  background:#fff;color:#1b1f45;font-weight:800;font-size:15px;padding:10px 14px;border-radius:14px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.4);
+  animation:tipIn .35s ease-out}
+.tutTip.low{top:auto;bottom:3%}
+@keyframes tipIn{from{opacity:0;transform:translate(-50%,8px)}}
+/* Günlük görevler */
+.mis{display:flex;flex-direction:column;gap:10px;text-align:left;margin:6px 0 4px}
+.misRow{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.misRow b{font-size:14px}
+.misRow .bar{grid-column:1;height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
+.misRow .bar i{display:block;height:100%;background:linear-gradient(90deg,#3ddc7a,#ffd166)}
+.misRow small{grid-column:1;color:var(--muted);font-size:12px}
+.misRow .claim{grid-row:1 / span 3;grid-column:2;border:0;border-radius:12px;padding:8px 12px;font-weight:900;font-size:14px;cursor:pointer;
+  color:#062a14;background:linear-gradient(#9af5b4,#2fcf6c);box-shadow:0 3px 0 #11743a;white-space:nowrap}
+.misRow .claim:disabled{background:rgba(255,255,255,.1);color:var(--muted);box-shadow:none;cursor:default}
+.misRow.done{opacity:.6}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4}
+#board.quake{animation:quake .4s ease-out}
+@keyframes quake{15%{transform:translate(-6px,3px) rotate(-.6deg)}30%{transform:translate(5px,-4px) rotate(.5deg)}
+  45%{transform:translate(-4px,-2px)}60%{transform:translate(3px,3px)}80%{transform:translate(-1px,1px)}}
+.flash{position:absolute;inset:0;z-index:4;pointer-events:none;
+  background:radial-gradient(circle at var(--x) var(--y),rgba(255,255,255,.55),rgba(255,255,255,0) 55%);
+  animation:flash .45s ease-out forwards}
+@keyframes flash{from{opacity:1}to{opacity:0}}
+.float{position:absolute;pointer-events:none;z-index:5;font-weight:800;color:#fff;white-space:nowrap;
+  font-size:clamp(16px,5vw,24px);text-shadow:0 2px 6px rgba(0,0,0,.7);animation:float .9s ease-out forwards}
+@keyframes float{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}
+  100%{opacity:0;transform:translate(-50%,-170%) scale(1)}}
+.banner{position:absolute;left:50%;top:50%;z-index:6;pointer-events:none;white-space:nowrap;
+  font-size:clamp(24px,8.5vw,42px);font-weight:900;color:var(--accent);
+  text-shadow:0 3px 0 #a0521a,0 6px 18px rgba(0,0,0,.6);animation:banner 1.1s ease-out forwards}
+@keyframes banner{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+
+/* özel güçler */
+.boosts{display:flex;gap:10px;justify-content:center}
+.boost{position:relative;flex:1;max-width:86px;height:54px;border-radius:16px;border:1px solid var(--line);cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.15),rgba(255,255,255,.05));color:#fff;font-size:24px;font-weight:900;
+  box-shadow:0 4px 0 rgba(0,0,0,.3);display:grid;place-items:center}
+.boost:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.boost .cnt{position:absolute;right:-6px;top:-8px;min-width:22px;height:22px;border-radius:11px;background:#ff5a6a;
+  font-size:12px;line-height:22px;padding:0 6px;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.boost .cnt.plus{background:#3ddc7a}
+.boost.on{background:linear-gradient(#ffe08a,#f5a524);color:#3a2200;box-shadow:0 0 0 3px #fff}
+.boost:disabled{opacity:.3;cursor:default}
+.boost.shopb{font-size:20px}
+.foot{text-align:center;color:var(--muted);font-size:13px;min-height:16px}
+.foot.aim{color:var(--accent);font-weight:700}
+
+/* katmanlar */
+.overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;
+  background:rgba(8,10,25,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .3s}
+.overlay.show{opacity:1;pointer-events:auto}
+.dialog{width:min(100%,340px);max-height:calc(100dvh - 32px);overflow-y:auto;background:#1b1f45;border:1px solid var(--line);border-radius:22px;
+  padding:24px 20px;text-align:center;box-shadow:0 30px 60px rgba(0,0,0,.5);
+  transform:scale(.9);transition:transform .3s cubic-bezier(.34,1.4,.64,1)}
+.overlay.show .dialog{transform:scale(1)}
+.dialog h2{font-size:24px;margin-bottom:6px}
+.dialog .big{font-size:46px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums}
+.dialog .rec{font-weight:700;min-height:22px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.stars{font-size:34px;letter-spacing:6px;color:#ffd166}
+.stars em{font-style:normal;color:rgba(255,255,255,.18)}
+.earn{font-size:18px;color:#ffe08a}
+.giftline{color:#8ef0a8}
+.btn{border:0;border-radius:14px;padding:14px 26px;font-size:17px;font-weight:800;cursor:pointer;
+  color:#2a1a00;background:linear-gradient(#ffe08a,#f5a524);box-shadow:0 4px 0 #b06404}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #b06404}
+.btn.green{color:#062a14;background:linear-gradient(#9af5b4,#2fcf6c);box-shadow:0 4px 0 #11743a}
+.btn.green:active{box-shadow:0 1px 0 #11743a}
+.btns{display:flex;flex-direction:column;gap:10px;align-items:center}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:none;border:1px solid var(--line);padding:10px 24px;font-size:15px}
+.btn.ghost:active{transform:scale(.97)}
+.hide{display:none!important}
+
+/* ana menü */
+#menu{z-index:16;background:radial-gradient(120% 80% at 50% 0%,#2a2f6b 0%,var(--bg) 62%);backdrop-filter:none}
+.menu{width:min(100%,340px);display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.logo{font-size:clamp(40px,13vw,56px);margin-bottom:4px}
+.demo{display:flex;gap:7px;margin-bottom:14px}
+.demo i{width:38px;height:38px;border-radius:26%;display:block;animation:bob 1.6s ease-in-out infinite;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.22),inset 0 2px 0 rgba(255,255,255,.35),0 3px 6px rgba(0,0,0,.35)}
+.demo i:nth-child(2){animation-delay:.15s}.demo i:nth-child(3){animation-delay:.3s}
+.demo i:nth-child(4){animation-delay:.45s}.demo i:nth-child(5){animation-delay:.6s}.demo i:nth-child(6){animation-delay:.75s}
+@keyframes bob{50%{transform:translateY(-10px)}}
+.mode{width:100%;border:1px solid var(--line);border-radius:18px;padding:16px;cursor:pointer;color:var(--text);
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.mode b{font-size:21px}
+.mode span{font-size:13px;color:var(--muted)}
+.mode:active{transform:scale(.97)}
+.corner{position:absolute;top:calc(14px + env(safe-area-inset-top))}
+.corner.r{right:16px}.corner.l{left:16px}
+.pill{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  padding:7px 12px;font-weight:800;font-size:15px;color:var(--text);white-space:nowrap}
+.pill small{font-weight:600;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+button.pill{cursor:pointer}
+.heart{color:#ff5a6a}
+
+/* harita */
+#map{z-index:15;display:flex;flex-direction:column;padding:0;place-items:stretch;background:#0d1530;backdrop-filter:none}
+.maptop{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background:rgba(13,18,40,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:2}
+.maptop .grow{flex:1;min-width:0;font-size:20px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.maptop{gap:6px}
+.maptop .pill{padding:6px 9px;gap:4px;font-size:14px}
+.maptop .pill small{font-size:11px}
+@media (max-width:400px){ .maptop .grow{font-size:17px} .maptop .icon-btn{width:36px;height:36px} }
+.mapscroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.mapinner{position:relative;width:100%;max-width:480px;margin:0 auto;
+  background:linear-gradient(to top,#123a3c 0%,#1a2c5c 25%,#2b1f5e 50%,#4a1f55 75%,#1c1446 100%)}
+.mapinner svg{position:absolute;left:0;top:0}
+.road-base{fill:none;stroke:rgba(0,0,0,.35);stroke-width:22;stroke-linecap:round}
+.road{fill:none;stroke:rgba(255,255,255,.14);stroke-width:14;stroke-linecap:round}
+.road-dash{fill:none;stroke:rgba(255,255,255,.35);stroke-width:2.5;stroke-dasharray:6 10;stroke-linecap:round}
+.road-done{fill:none;stroke:#ffd166;stroke-width:8;stroke-linecap:round;filter:drop-shadow(0 0 6px rgba(255,209,102,.6))}
+.dot{position:absolute;border-radius:50%;background:#fff;pointer-events:none}
+.node{position:absolute;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:3px solid rgba(255,255,255,.25);
+  font-size:21px;font-weight:900;color:#fff;cursor:pointer;
+  background:radial-gradient(circle at 35% 30%,#7d86b8,#3b4170 60%,#262a4d);
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.3),0 6px 14px rgba(0,0,0,.45)}
+.node.done{border-color:rgba(255,255,255,.6);background:radial-gradient(circle at 35% 30%,#9af5b4,#22b85a 60%,#0e6e36)}
+.node.cur{width:76px;height:76px;margin:-38px 0 0 -38px;font-size:26px;color:#3a2200;border-color:#fff;
+  background:radial-gradient(circle at 35% 30%,#ffe49a,#f5a524 60%,#b06404);animation:curPulse 1.4s ease-in-out infinite}
+@keyframes curPulse{50%{box-shadow:inset 0 -4px 0 rgba(0,0,0,.3),0 0 0 12px rgba(255,209,102,.2),0 6px 14px rgba(0,0,0,.45)}}
+.node.locked{color:rgba(255,255,255,.35);cursor:default}
+.node .st{position:absolute;left:50%;top:100%;transform:translateX(-50%);font-size:13px;letter-spacing:1px;color:#ffd166;
+  white-space:nowrap;margin-top:3px;text-shadow:0 1px 2px #000}
+.node .st em{color:rgba(255,255,255,.25);font-style:normal}
+.node{overflow:visible}
+.node .badge svg{width:18px;height:18px}
+.node .badge{position:absolute;right:-12px;top:-12px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  font-size:16px;line-height:1;background:radial-gradient(circle at 35% 30%,#ff9ab0,#e2365f 60%,#9e1538);
+  border:2px solid #fff;box-shadow:0 3px 6px rgba(0,0,0,.5);animation:giftBob 1.8s ease-in-out infinite}
+@keyframes giftBob{50%{transform:translateY(-4px) rotate(-8deg)}}
+.node .badge.gem{width:22px;height:22px;right:-6px;top:-6px;border-radius:30%;border:2px solid #fff;animation:none}
+.node .badge.gem.g0{background:radial-gradient(circle at 32% 25%,#ff9a9a,#e23b4a 55%,#9e1528)}
+.node .badge.gem.g1{background:radial-gradient(circle at 32% 25%,#ffe49a,#f5a524 55%,#b06404)}
+.node .badge.gem.g2{background:radial-gradient(circle at 32% 25%,#9af5b4,#22b85a 55%,#0e6e36)}
+.node .badge.gem.g3{background:radial-gradient(circle at 32% 25%,#9acbff,#2f7bf0 55%,#163fa0)}
+.node .badge.gem.g4{background:radial-gradient(circle at 32% 25%,#e6b4ff,#9b4dea 55%,#5a1b9c)}
+.node .badge.gem.g5{background:radial-gradient(circle at 32% 25%,#ffc2e4,#f0459f 55%,#a3165f)}
+.node:active:not(.locked){transform:scale(.94)}
+
+/* mağaza */
+#shop{z-index:25}
+.shopbox{width:min(100%,380px);max-height:calc(100dvh - 32px);overflow-y:auto;background:#1b1f45;border:1px solid var(--line);
+  border-radius:22px;padding:18px;box-shadow:0 30px 60px rgba(0,0,0,.5)}
+.shophead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.shophead h2{font-size:22px}
+.item{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line)}
+.item .ic{width:46px;height:46px;flex:none;border-radius:14px;display:grid;place-items:center;font-size:24px;font-weight:900;
+  background:linear-gradient(180deg,rgba(255,255,255,.15),rgba(255,255,255,.05))}
+.item .tx{flex:1;min-width:0}
+.item .tx b{display:block;font-size:15px}
+.item .tx span{font-size:12px;color:var(--muted)}
+.item .own{font-size:12px;color:var(--muted)}
+.buy{border:0;border-radius:12px;padding:9px 12px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap;
+  color:#2a1a00;background:linear-gradient(#ffe08a,#f5a524);box-shadow:0 3px 0 #b06404;display:flex;align-items:center;gap:5px}
+.buy:active{transform:translateY(2px);box-shadow:0 1px 0 #b06404}
+.buy:disabled{opacity:.45;cursor:default;transform:none}
+.buy.shake{animation:shake2 .3s}
+@keyframes shake2{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.sect{margin:16px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700}
+.note{font-size:12px;color:var(--muted);margin-top:4px}
+.tag{font-size:11px;background:#ff5a6a;color:#fff;border-radius:6px;padding:1px 5px;margin-left:4px;vertical-align:1px}
+
+/* ayarlar */
+#settings{z-index:30}
+.sheet{display:flex;flex-direction:column;gap:6px;text-align:left}
+.sheet h2{text-align:center;margin-bottom:8px}
+.sheet .btn{margin-top:14px;align-self:center}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px;
+  border-bottom:1px solid var(--line);font-size:16px;font-weight:600;cursor:pointer}
+.row input{position:absolute;opacity:0;pointer-events:none}
+.sw{position:relative;flex:none;width:50px;height:28px;border-radius:14px;background:rgba(255,255,255,.15);transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 4px rgba(0,0,0,.4);transition:transform .2s cubic-bezier(.34,1.4,.64,1)}
+.row input:checked + .sw{background:#3ddc7a}
+.row input:checked + .sw::after{transform:translateX(22px)}
+.seg{display:flex;background:rgba(255,255,255,.08);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--muted);font-weight:800;font-size:14px;padding:7px 11px;border-radius:8px;cursor:pointer}
+.seg button.on{background:#ffd166;color:#2a1a00}
+
+
+/* ---- canlı ana menü ---- */
+#menu{display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.mbg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.mbg i{position:absolute;top:105%;border-radius:26%;opacity:.3;animation:rise linear infinite;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.22),inset 0 2px 0 rgba(255,255,255,.35)}
+@keyframes rise{from{transform:translateY(0) rotate(0)}to{transform:translateY(-135vh) rotate(220deg)}}
+.mtop{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:8px;padding:calc(14px + env(safe-area-inset-top)) 16px 0;z-index:2}
+.mtop .grow{flex:1}
+.pill .plus{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#3ddc7a;color:#062a14;font-size:14px;line-height:1;margin-left:2px;font-weight:900}
+.menu{position:relative;z-index:1}
+.logo{background:linear-gradient(90deg,#ff8a8a,#ffd166,#8ef0a8,#8ec5ff,#e0a8ff,#ff8a8a);background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 6s linear infinite;
+  filter:drop-shadow(0 4px 0 rgba(0,0,0,.35));font-weight:1000}
+@keyframes shimmer{to{background-position:200% 0}}
+.logo-wrap{position:relative}
+.lspark{position:absolute;width:28px;height:28px;animation:twinkle 2.4s ease-in-out infinite}
+.lspark svg{width:100%;height:100%;display:block}
+.lspark.s1{right:-16px;top:-10px}.lspark.s2{left:-12px;bottom:-2px;width:18px;height:18px;animation-delay:1.2s}
+@keyframes twinkle{0%,100%{transform:scale(.4) rotate(0);opacity:.3}50%{transform:scale(1) rotate(90deg);opacity:1}}
+.play-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:14px;border:0;border-radius:24px;padding:14px 20px;cursor:pointer;
+  color:#3a2200;background:linear-gradient(#ffe590,#f5a524);box-shadow:0 6px 0 #b06404,0 14px 30px rgba(245,165,36,.35);animation:playPulse 2s ease-in-out infinite}
+.play-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b06404;animation:none}
+.play-btn .pi{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.5);display:grid;place-items:center;flex:none}
+.play-btn .pi svg{width:22px;height:22px;fill:#3a2200;margin-left:4px}
+.play-btn .pt{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1}
+.play-btn b{font-size:30px;font-weight:1000;letter-spacing:1px}
+.play-btn small{font-size:13px;font-weight:800;opacity:.75}
+@keyframes playPulse{50%{transform:scale(1.035)}}
+.mrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.endless-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:12px;border:0;border-radius:20px;padding:10px 18px;cursor:pointer;
+  color:#04203f;background:linear-gradient(#a8d4ff,#4a9bff);box-shadow:0 5px 0 #1f5fb8,0 10px 24px rgba(74,155,255,.3);margin-top:-4px}
+.endless-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #1f5fb8}
+.endless-btn .mi{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.5);display:grid;place-items:center;font-size:28px;font-weight:1000;line-height:1;flex:none}
+.endless-btn .pt{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1}
+.endless-btn b{font-size:20px;font-weight:1000}
+.endless-btn small{font-size:12px;font-weight:800;opacity:.75}
+.mini{position:relative;border:1px solid var(--line);border-radius:18px;padding:12px 4px 10px;cursor:pointer;color:var(--text);min-width:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.04));display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:0 8px 18px rgba(0,0,0,.3)}
+.mini:active{transform:scale(.95)}
+.mini .mi{height:32px;display:grid;place-items:center;font-size:30px;line-height:1;font-weight:1000;color:#8ec5ff}
+.mini .mi .ico{width:32px;height:32px}
+.mini b{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini small{font-size:11px;color:var(--muted);line-height:1.2}
+.mini.ready{border-color:rgba(255,209,102,.7);animation:wiggle 2.6s ease-in-out infinite}
+.mini .dotb{position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:#ff5a6a;border:2px solid #fff}
+@keyframes wiggle{0%,80%,100%{transform:rotate(0)}85%{transform:rotate(-5deg)}90%{transform:rotate(5deg)}95%{transform:rotate(-3deg)}}
+/* can penceresi */
+#livesDlg{z-index:24}
+#privacy{z-index:50}
+.langsel{font:inherit;font-weight:800;font-size:15px;color:var(--text);background:rgba(255,255,255,.1);border:1px solid var(--line);
+  border-radius:10px;padding:7px 10px;cursor:pointer;max-width:60%}
+.langsel option{color:#111;background:#fff}
+.row.vol{cursor:default}
+.row.vol span{flex:none;min-width:96px}
+.row.vol b{flex:none;width:38px;text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.row input[type=range]{position:static;opacity:1;pointer-events:auto;flex:1;min-width:0;height:28px;accent-color:#ffd166;cursor:pointer}
+#consent{z-index:45;background:radial-gradient(120% 80% at 50% 0%,#2a2f6b 0%,var(--bg) 62%)}
+.consentbox{display:flex;flex-direction:column;align-items:center;gap:10px}
+.cicon{width:64px;height:64px}.cicon svg{width:100%;height:100%}
+.ctext{font-size:14px;line-height:1.5;color:#cfd2ea;margin:0 0 6px}
+.btn.big{width:100%;padding:16px;font-size:19px}
+.rowbtn{background:none;border-left:0;border-right:0;border-top:0;color:inherit;text-align:left;font-family:inherit;width:100%}
+.rowsub{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-top:2px}
+.row.locked{opacity:.55;cursor:default}
+.ptext{font-size:13px;line-height:1.5;color:#cfd2ea;max-height:32vh;overflow-y:auto;background:rgba(0,0,0,.22);border-radius:12px;padding:10px 12px;margin-bottom:4px}
+.ptext p{margin:0 0 8px}.ptext p:last-child{margin:0}
+.ptext b{color:#fff}
+#livesDlg .btns .btn:not(.ghost){width:100%}
+.hearts{display:flex;justify-content:center;gap:6px;margin:6px 0 6px}
+.hearts .ico{width:38px;height:38px}
+.hearts .ico.off{filter:grayscale(1) brightness(.45)}
+.lifeinfo{color:var(--muted);font-size:14px;margin-bottom:14px;font-variant-numeric:tabular-nums;min-height:20px}
+.btn small{font-weight:700;opacity:.8}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+.note2{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.4}
+.goalbig{font-size:26px;color:var(--text);margin:6px 0 2px}
+.week{display:flex;gap:5px;justify-content:center;margin-top:4px}
+.week i{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.08);font-style:normal;font-size:13px;display:grid;place-items:center;color:var(--muted)}
+.week i.got{background:linear-gradient(#ffe08a,#f5a524);color:#3a2200;font-weight:900}
+/* oyun sonu reklam panosu */
+#over{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+body.board-on #over .dialog{max-height:calc(100dvh - 300px)}
+.adboard{width:300px;flex:none;text-align:center;margin-top:18px}
+.adboard span{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.adslot{width:300px;height:250px;border-radius:8px}
+.adslot.mock{border:2px dashed rgba(255,255,255,.25);display:grid;place-items:center;color:rgba(255,255,255,.45);font-weight:800;background:rgba(0,0,0,.25)}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:23}
+.ico{display:inline-block;width:1em;height:1em;vertical-align:-.14em;flex:none}
+.ico svg{width:100%;height:100%;display:block}
+.boost .ico{width:28px;height:28px}
+.item.hl{background:linear-gradient(90deg,rgba(255,209,102,.16),rgba(255,209,102,.03));border:1px solid rgba(255,209,102,.4);border-radius:14px;padding:11px 10px;margin-bottom:6px}
+.buy.blue{color:#04203f;background:linear-gradient(#a8d4ff,#4a9bff);box-shadow:0 3px 0 #1f5fb8}
+.btn.blue{color:#04203f;background:linear-gradient(#a8d4ff,#4a9bff);box-shadow:0 4px 0 #1f5fb8}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:13px;cursor:pointer;padding:6px}
+.about{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.5}
+#adMock{z-index:50;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+#adMock .adbox{width:min(90vw,340px);aspect-ratio:9/12;border:2px dashed #555;border-radius:16px;display:grid;place-items:center;color:#aaa;font-weight:800;font-size:22px;padding:20px}
+#adMock small{display:block;font-size:13px;font-weight:600;margin-top:8px}
+#toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translate(-50%,-20px);opacity:0;z-index:40;
+  background:#262b5c;border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-weight:700;font-size:14px;
+  transition:opacity .25s,transform .25s;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){
+  .tile{transition-duration:120ms!important}
+  .tile.hint .gem,.node.cur{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Gleam Pop</h1>
+    <div class="icons">
+      <button class="icon-btn" data-open="settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <button class="icon-btn" id="restartBtn" aria-label="Restart">
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      </button>
+      <button class="icon-btn" id="homeBtn" aria-label="Menu">
+        <svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>
+      </button>
+    </div>
+  </header>
+  <div class="scores">
+    <div class="card"><div class="lbl" data-t="score"></div><div class="val" id="score">0</div></div>
+    <div class="card"><div class="lbl" id="midLbl"></div><div class="val" id="mid">0</div></div>
+    <div class="card" id="movesCard"><div class="lbl" data-t="moves"></div><div class="val" id="moves">0</div></div>
+  </div>
+  <div class="progress" id="progress"><div class="bar" id="bar"></div><span id="goal"></span></div>
+  <div id="board"></div>
+  <div class="boosts">
+    <button class="boost" data-b="hammer"><span data-icon="hammer"></span><span class="cnt"></span></button>
+    <button class="boost" data-b="plus5">+5<span class="cnt"></span></button>
+    <button class="boost" data-b="clear"><span data-icon="blast"></span><span class="cnt"></span></button>
+    <button class="boost shopb" data-open="shop" aria-label="Shop"><i class="coin" style="font-size:24px"></i></button>
+  </div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<!-- Bölüm sonu penceresi -->
+<div class="overlay" id="over">
+  <div class="dialog">
+    <h2 id="dlgTitle"></h2>
+    <div class="big" id="finalScore">0</div>
+    <div class="rec" id="rec"></div>
+    <div class="btns">
+      <button class="btn blue hide" id="dlgAd"></button>
+      <button class="btn green hide" id="dlgAlt"></button>
+      <button class="btn" id="dlgMain"></button>
+      <button class="btn ghost" id="dlgGhost"></button>
+    </div>
+  </div>
+  <div class="adboard hide" id="adBoard"><span data-t="adLabel"></span><div class="adslot" id="adSlot"></div></div>
+</div>
+
+<!-- Harita -->
+<div class="overlay" id="map">
+  <div class="maptop">
+    <button class="icon-btn" id="mapBack" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="grow" data-t="map"></div>
+    <button class="pill" data-open="lives"><span data-icon="heart"></span><span class="livesVal"></span><small class="lifeTimer"></small></button>
+    <button class="pill" data-open="shop"><i class="coin"></i><span class="coinsVal"></span></button>
+  </div>
+  <div class="mapscroll" id="mapScroll"><div class="mapinner" id="mapInner"></div></div>
+</div>
+
+<!-- Ana menü -->
+<div class="overlay show" id="menu">
+  <div class="mbg" id="menuBg"></div>
+  <div class="mtop">
+    <button class="pill" data-open="lives"><span data-icon="heart"></span><span class="livesVal"></span><small class="lifeTimer"></small></button>
+    <button class="pill" data-open="shop"><i class="coin"></i><span class="coinsVal"></span><b class="plus">+</b></button>
+    <span class="grow"></span>
+    <button class="icon-btn" data-open="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+  <div class="menu">
+    <div class="logo-wrap">
+      <h1 class="logo">Gleam Pop</h1>
+      <span class="lspark s1" data-spark></span><span class="lspark s2" data-spark></span>
+    </div>
+    <div class="demo"><i class="g0"></i><i class="g1"></i><i class="g2"></i><i class="g3"></i><i class="g4"></i><i class="g5"></i></div>
+    <button class="play-btn" id="modeMap">
+      <span class="pi"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></span>
+      <span class="pt"><b data-t="play"></b><small id="mapInfo"></small></span>
+    </button>
+    <button class="endless-btn" id="modeEndless">
+      <span class="mi">∞</span>
+      <span class="pt"><b data-t="endless"></b><small id="endlessInfo"></small></span>
+    </button>
+    <div class="mrow">
+      <button class="mini" id="dailyBtn"><span class="mi"><span data-icon="gift"></span></span><b data-t="daily"></b><small id="dailyInfo"></small><i class="dotb hide" id="dailyDot"></i></button>
+      <button class="mini" id="misBtn"><span class="mi"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="18" rx="2.5"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/></svg></span><b data-t="missions"></b><small id="misInfo"></small><i class="dotb hide" id="misDot"></i></button>
+      <button class="mini" data-open="shop"><span class="mi"><i class="coin" style="font-size:30px"></i></span><b data-t="shop"></b><small data-t="shopSub"></small></button>
+    </div>
+  </div>
+</div>
+
+<!-- Günlük görevler -->
+<div class="overlay" id="misDlg">
+  <div class="dialog">
+    <h2 data-t="misTitle"></h2>
+    <div class="mis" id="misList"></div>
+    <div class="lifeinfo" id="misFoot"></div>
+    <div class="btns"><button class="btn ghost" id="misClose" data-t="close"></button></div>
+  </div>
+</div>
+
+<!-- Can penceresi -->
+<div class="overlay" id="livesDlg">
+  <div class="dialog">
+    <h2 data-t="livesTitle"></h2>
+    <div class="hearts" id="heartsRow"></div>
+    <div class="lifeinfo" id="lifeInfo"></div>
+    <div class="btns">
+      <button class="btn blue" id="lifeAd"></button>
+      <button class="btn green" id="lifeCoin1"></button>
+      <button class="btn" id="lifeCoinAll"></button>
+      <button class="btn ghost" id="lifeClose" data-t="close"></button>
+    </div>
+    <div class="note2" data-t="lifeNote"></div>
+  </div>
+</div>
+
+<!-- Mağaza -->
+<div class="overlay" id="shop">
+  <div class="shopbox">
+    <div class="shophead">
+      <h2 data-t="shop"></h2>
+      <div class="pill"><i class="coin"></i><span class="coinsVal"></span></div>
+    </div>
+    <div id="shopItems"></div>
+    <div class="sect" data-t="packs"></div>
+    <div id="shopPacks"></div>
+    <div class="note" id="payNote"></div>
+    <div class="btns" style="margin-top:14px">
+      <button class="btn" id="shopClose" data-t="ok"></button>
+      <button class="linkbtn" id="restoreBtn" data-t="restore"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Ayarlar -->
+<div class="overlay" id="settings">
+  <div class="dialog sheet">
+    <h2 data-t="settings"></h2>
+    <div class="row vol"><span data-t="music"></span><input type="range" id="volMusic" min="0" max="100" step="1"><b id="volMusicV"></b></div>
+    <div class="row vol"><span data-t="sfx"></span><input type="range" id="volSfx" min="0" max="100" step="1"><b id="volSfxV"></b></div>
+    <label class="row"><span data-t="vibe"></span><input type="checkbox" id="optVibe"><i class="sw"></i></label>
+    <div class="row"><span data-t="language"></span>
+      <select id="langSel" class="langsel">
+        <option value="en">English</option><option value="tr">Türkçe</option><option value="ru">Русский</option>
+        <option value="es">Español</option><option value="pt">Português</option><option value="de">Deutsch</option><option value="fr">Français</option>
+      </select>
+    </div>
+    <button class="row rowbtn" id="openPrivacy"><span data-t="privacyTitle"></span><span>›</span></button>
+    <button class="btn" id="settingsDone" data-t="ok"></button>
+    <div class="about"><span data-t="about"></span><br>Gleam Pop v<span id="ver"></span></div>
+  </div>
+</div>
+
+<!-- İlk açılış: gizlilik onayı (tek dokunuş) -->
+<div class="overlay" id="consent">
+  <div class="dialog consentbox">
+    <div class="cicon"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z" fill="#3ddc7a"/><path d="M8 12.5l2.6 2.6L16 9.7" stroke="#062a14" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h2 data-t="consentTitle"></h2>
+    <p class="ctext" data-t="consentText"></p>
+    <button class="btn green big" id="consentOk" data-t="consentOk"></button>
+    <button class="linkbtn" id="consentRead" data-t="consentRead"></button>
+  </div>
+</div>
+
+<!-- Gizlilik ve veri izinleri -->
+<div class="overlay" id="privacy">
+  <div class="dialog sheet">
+    <h2 data-t="privacyTitle"></h2>
+    <div class="ptext" id="privacyText"></div>
+    <div class="sect" data-t="dataPerms"></div>
+    <label class="row" id="rowPers"><span><span data-t="persAds"></span><small class="rowsub" id="persSub"></small></span><input type="checkbox" id="optPers"><i class="sw"></i></label>
+    <div class="row locked"><span><span data-t="trackPerm"></span><small class="rowsub" data-t="offForNow"></small></span><input type="checkbox" disabled><i class="sw"></i></div>
+    <div class="row locked"><span><span data-t="notifPerm"></span><small class="rowsub" data-t="offForNow"></small></span><input type="checkbox" disabled><i class="sw"></i></div>
+    <button class="row rowbtn hide" id="privacyOpts"><span data-t="privacyOpts"></span><span>›</span></button>
+    <button class="btn" id="privacyDone" data-t="ok"></button>
+    <button class="linkbtn hide" id="privacyLink" data-t="privacyPolicy"></button>
+    <button class="linkbtn" id="resetData" data-t="resetData"></button>
+  </div>
+</div>
+
+<!-- Tarayıcıda test reklamı (yalnızca bilgisayarda geliştirme sırasında görünür) -->
+<div class="overlay" id="adMock">
+  <div class="adbox"><div><span data-t="testAd"></span><small data-t="testAdNote"></small></div></div>
+  <button class="btn ghost" id="adMockClose"></button>
+</div>
+
+<div id="toast"></div>
+
+<script src="native.js"></script>
+<script>
+(() => {
+'use strict';
+const N = 8, K = 6, MAX_LEVEL = 99, MAX_LIVES = 5, LIFE_MS = 20 * 60 * 1000;
+const VERSION = '1.0.5';
+
+// ---------- Yayın ayarları ----------
+// ÖNEMLİ: Reklam kimlikleri şimdilik Google'ın herkese açık TEST kimlikleri. Yayından önce
+// AdMob hesabındaki kendi kimliklerinle değiştir ve adsTesting'i false yap (YAYIN_REHBERI.md, adım 4).
+const CONFIG = {
+  adsTesting: true,
+  interstitialId: 'ca-app-pub-3940256099942544/1033173712',
+  rewardedId: 'ca-app-pub-3940256099942544/5224354917',
+  bannerId: 'ca-app-pub-3940256099942544/6300978111',   // oyun sonu reklam panosu (300x250)
+  lifePrice: 50, refillPrice: 150, lifeAdsPerDay: 8,
+  firstAdLevel: 4,        // ilk 3 bölümde hiç geçiş reklamı yok
+  interstitialEvery: 2,   // sonra her 2 bölüm sonunda bir
+  endlessAdMs: 3 * 60 * 1000,
+  rewardCoins: 50, rewardPerDay: 5,
+  noAdsId: 'remove_ads',
+  coinPacks: { coins_500: 500, coins_1200: 1200, coins_3000: 3000 },
+  privacyUrl: ''          // gizlilik politikası yayınlanınca adresini buraya yaz
+};
+const NATIVE = window.GPNative && window.GPNative.isNative ? window.GPNative : null;
+// Test modu YALNIZCA bilgisayardaki tarayıcıda. Android uygulaması da https://localhost'tan çalıştığı için NATIVE iken asla açılmaz.
+const DEV = !NATIVE && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && ['localhost', '127.0.0.1'].includes(location.hostname);
+
+// ---------- Simgeler (oyuna özel çizildi; emoji/hazır simge yok) ----------
+const ICON = {
+  hammer: '<svg viewBox="0 0 24 24"><g transform="rotate(-40 12 12)"><rect x="10.6" y="9" width="2.8" height="13" rx="1.4" fill="#c98a4b"/><rect x="10.6" y="9" width="1.2" height="13" rx=".6" fill="#e7b37c"/><rect x="4.5" y="3" width="15" height="7" rx="2" fill="#aab4c8"/><rect x="4.5" y="3" width="15" height="2.6" rx="1.3" fill="#e4e9f2"/></g></svg>',
+  blast: '<svg viewBox="0 0 24 24"><path d="M12 1.5l2.2 5.4 5.4-2.5-2.3 5.5 5.2 2.1-5.2 2.1 2.3 5.5-5.4-2.5L12 22.5l-2.2-5.4-5.4 2.5 2.3-5.5L1.5 12l5.2-2.1-2.3-5.5 5.4 2.5z" fill="#ff7a2f"/><path d="M12 6.5l1.3 3.2 3.2-1.4-1.4 3.2 3 1.2-3 1.2 1.4 3.2-3.2-1.4L12 17.5l-1.3-3.2-3.2 1.4 1.4-3.2-3-1.2 3-1.2-1.4-3.2 3.2 1.4z" fill="#ffd84d"/><circle cx="12" cy="12" r="2.2" fill="#fff6c8"/></svg>',
+  gift: '<svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="2" fill="#ff5a7a"/><rect x="2" y="7" width="20" height="4" rx="1.5" fill="#ff7d95"/><rect x="10.5" y="7" width="3" height="14" fill="#ffd166"/><path d="M12 7C9 2.5 5.5 4 7 6.5 8 8 12 7 12 7zM12 7c3-4.5 6.5-3 5-.5C16 8 12 7 12 7z" fill="#ffd166"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M12 21s-7.6-4.6-9.6-9.3C1.1 8.4 3.3 4.8 6.9 4.8c2.1 0 3.6 1.1 5.1 3 1.5-1.9 3-3 5.1-3 3.6 0 5.8 3.6 4.5 6.9C19.6 16.4 12 21 12 21z" fill="#ff5a6a"/><path d="M6.5 7.5c-1.4.2-2.3 1.5-2 3" stroke="#ffc2c8" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="4" fill="#4a9bff"/><path d="M10 8.5v7l6-3.5z" fill="#fff"/></svg>',
+  noads: '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3" fill="#ffd166"/><text x="12" y="16" font-size="9" font-weight="900" text-anchor="middle" fill="#3a2200" font-family="sans-serif">AD</text><path d="M4 4l16 16" stroke="#e2365f" stroke-width="2.6" stroke-linecap="round"/></svg>'
+};
+const ico = k => `<span class="ico">${ICON[k]}</span>`;
+document.querySelectorAll('[data-icon]').forEach(e => { e.className = 'ico'; e.innerHTML = ICON[e.dataset.icon]; });
+
+// ---------- Dil ----------
+const TEXT = {
+  tr:{score:'Skor',best:'En İyi',moves:'Hamle',help:'Kaydır veya iki taşa dokun',combo:'Kombo',shuffle:'Hamle yok!',great:'Harika!',amazing:'Muhteşem!',sp_h:'Işın bloğu! Patlayınca bütün satırı ya da sütunu temizler',sp_b:'Bomba! Patlayınca çevresindeki 3x3 alanı temizler',sp_p:'Prizma! Bir taşla yer değiştir, o rengin hepsi patlasın',spMega:'SÜPER KOMBO!',iceGoal:'Buzu kır',stoneGoal:'Kayaları kır',sp_ice:'Buz! Üstündeki blok patlayınca kırılır. Kalın buz iki kez vurulmalı',sp_stone:'Kaya! Kaydırılamaz. Yanında blok patlayınca ya da özel blok değince çatlar',tut1:'Bloğu kaydır: aynı renkten 3 tane yan yana gelince patlar!',tut2:'Harika! Hamlen bitmeden hedefi tamamla. 4 ya da 5 eşleşme özel blok yapar',missions:'Görevler',misTitle:'Günlük görevler',misDone:'Görev tamam!',misAll:'Hepsi tamam! Yarın yeni görevler gelecek',misNew:'Her gün yeni görevler',m_pop:'{n} blok patlat',m_special:'{n} özel blok yap',m_combo:'{n} süper kombo yap',m_win:'{n} bölüm kazan',m_stars:'{n} yıldız topla',m_endless:'Sonsuz modda tek oyunda {n} puan',m_ice:'{n} buz kır',m_stone:'{n} kaya kır',
+      map:'Harita',endless:'Sonsuz',level:'Bölüm',target:'Hedef',collect:'Topla',next:'Sonraki Bölüm',retry:'Tekrar Dene',menu:'Menü',
+      win:'Bölüm Tamamlandı!',fail:'Hamlen Bitti',endlessDesc:'Hamle sınırı yok',bestIs:'En iyi',
+      settings:'Ayarlar',music:'Fon müziği',sfx:'Ses efektleri',vibe:'Titreşim',language:'Dil',ok:'Tamam',
+      shop:'Mağaza',hammer:'Çekiç',hammerDesc:'İstediğin bir taşı kır',plus5:'+5 Hamle',plus5Desc:'Bölümde 5 hamle daha',
+      clear:'Tahta Temizle',clearDesc:'Tüm taşları bir anda patlat',lives:'Can Doldur',livesDesc:'Canlarını 5\'e tamamla',
+      packs:'Altın Paketleri',packsNote:'Gerçek parayla satın alma, oyun Google Play\'e çıkınca açılacak.',soon:'Yakında',
+      noCoins:'Yeterli altının yok',noLives:'Canın kalmadı! Mağazadan doldurabilirsin',full:'Dolu',cont:'Devam et: +5 hamle',
+      have:'elinde',gift:'Hediye',tapTile:'Kırmak için bir taşa dokun',bought:'Satın alındı!',owned:'Sende',lifeIn:'Yeni can',
+      noAds:'Reklamları Kaldır',noAdsDesc:'Bölüm aralarındaki reklamlar tamamen kalkar',noAdsOwned:'Reklamsız sürüm aktif',buy:'Satın al',
+      freeCoins:'Bedava Altın',freeCoinsDesc:'Kısa bir reklam izle',left:'Bugün kalan',watch:'İzle',
+      adLife:'Reklam izle: +1 can',adMoves:'Reklam izle: +5 hamle',adNotReady:'Reklam şu an yüklenemedi, biraz sonra tekrar dene',
+      storeNA:'Satın alma yalnızca Google Play sürümünde çalışır',restore:'Satın alımları geri yükle',restored:'Satın alımlar kontrol edildi',
+      adsRemoved:'Reklamlar kaldırıldı. Teşekkürler!',privacyOpts:'Gizlilik seçenekleri',privacyPolicy:'Gizlilik politikası',
+      about:'Müzik ve görseller bu oyun için üretildi. Ses efektleri: Kenney.nl (CC0).',testAd:'TEST REKLAMI',testAdNote:'Gerçek reklamlar yalnızca Android sürümünde görünür',
+      close:'Kapat',payNote:'Ödemeler Google Play üzerinden güvenle yapılır.',limitReached:'Bugünlük reklam hakkın doldu, yarın yine gel',
+      lifeGot:'+1 can kazandın!',
+      play:'OYNA',livesTitle:'Canlar',lifeNext:'Yeni can',lifeFull:'Tamamı',lifeAll:'Hepsini doldur',
+      lifeNote:'Her bölüm 1 can harcar. Bölümü kazanırsan canın geri gelir. Canlar 20 dakikada bir dolar.',
+      refund:'can geri geldi',daily:'Hediye',dailyTitle:'Günlük Hediye',dailyReady:'Hazır!',dailyWait:'Yarın yine gel',day:'Gün',
+      adLabel:'Reklam',gameOver:'Oyun Bitti',again:'Tekrar Oyna',shopSub:'Güç ve altın',rec:'Yeni rekor!',
+      privacyTitle:'Gizlilik ve veriler',dataPerms:'Veri izinleri',persAds:'Kişiselleştirilmiş reklamlar',
+      persOff:'Kapalı: yalnızca ilgi alanına dayanmayan reklamlar',persOn:'Açık: reklamlar ilgi alanına göre seçilebilir',
+      trackPerm:'Reklam kimliği ve takip',notifPerm:'Bildirimler',offForNow:'Şimdilik kapalı – oyun bu izni istemez',
+      resetData:'Oyun verilerimi sil',resetConfirm:'Tüm ilerleme, altın ve ayarlar bu cihazdan silinecek. Emin misin? (Satın aldığın "Reklamları Kaldır" Google Play\'den geri yüklenir.)',
+      privacyBody:'<p><b>Hesap yok.</b> İlerlemen, altınların ve ayarların yalnızca bu cihazda saklanır; kendi sunucumuz yoktur.</p><p><b>Reklamlar:</b> Ücretsiz sürümde Google AdMob reklamları gösterilir. Şu an yalnızca <b>kişiselleştirilmemiş</b> reklamlar gösterilir; oyun reklam kimliğine erişmez ve seni takip etmez. Google, reklamı göstermek ve dolandırıcılığı önlemek için IP adresi ve cihaz bilgisi gibi temel verileri işleyebilir.</p><p><b>Satın almalar</b> tamamen Google Play üzerinden yapılır; ödeme bilgilerini görmeyiz.</p><p><b>Bildirim</b> göndermeyiz. Oyun 13 yaş altına yönelik değildir.</p>',
+      consentTitle:'Hoş geldin!',consentText:'Oynamaya başlayarak gizlilik politikamızı kabul etmiş olursun. Hesap gerekmez, ilerlemen yalnızca telefonunda saklanır. Ücretsiz sürümde seni takip etmeyen, kişiselleştirilmemiş reklamlar gösterilir.',
+      consentOk:'Kabul et ve oyna',consentRead:'Gizlilik politikasını oku'},
+  en:{score:'Score',best:'Best',moves:'Moves',help:'Swipe or tap two blocks',combo:'Combo',shuffle:'No moves!',great:'Great!',amazing:'Amazing!',sp_h:'Beam gem! When it pops, it clears its whole row or column',sp_b:'Bomb! When it pops, it clears the 3x3 area around it',sp_p:'Prism! Swap it with a block to pop every block of that color',spMega:'SUPER COMBO!',iceGoal:'Break the ice',stoneGoal:'Break the stones',sp_ice:'Ice! It breaks when the block on it pops. Thick ice needs two hits',sp_stone:'Stone! It can\'t be moved. It cracks when a block next to it pops or a special gem hits it',tut1:'Swipe a block: 3 of the same color in a row pop!',tut2:'Great! Reach the goal before you run out of moves. Matching 4 or 5 makes a special gem',missions:'Missions',misTitle:'Daily missions',misDone:'Mission complete!',misAll:'All done! New missions tomorrow',misNew:'New missions every day',m_pop:'Pop {n} blocks',m_special:'Make {n} special gems',m_combo:'Make {n} super combos',m_win:'Win {n} levels',m_stars:'Collect {n} stars',m_endless:'Score {n} in one Endless game',m_ice:'Break {n} ice',m_stone:'Break {n} stones',
+      map:'Map',endless:'Endless',level:'Level',target:'Target',collect:'Collect',next:'Next Level',retry:'Try Again',menu:'Menu',
+      win:'Level Complete!',fail:'Out of Moves',endlessDesc:'No move limit',bestIs:'Best',
+      settings:'Settings',music:'Music',sfx:'Sound effects',vibe:'Vibration',language:'Language',ok:'Done',
+      shop:'Shop',hammer:'Hammer',hammerDesc:'Smash any block you choose',plus5:'+5 Moves',plus5Desc:'5 more moves in a level',
+      clear:'Board Blast',clearDesc:'Pop every block at once',lives:'Refill Lives',livesDesc:'Fill your lives back to 5',
+      packs:'Coin Packs',packsNote:'Real-money purchases open when the game launches on Google Play.',soon:'Soon',
+      noCoins:'Not enough coins',noLives:'Out of lives! Refill them in the shop',full:'Full',cont:'Continue: +5 moves',
+      have:'you have',gift:'Gift',tapTile:'Tap a block to smash it',bought:'Purchased!',owned:'Owned',lifeIn:'Next life',
+      noAds:'Remove Ads',noAdsDesc:'No more ads between levels',noAdsOwned:'Ad-free version active',buy:'Buy',
+      freeCoins:'Free Coins',freeCoinsDesc:'Watch a short ad',left:'Left today',watch:'Watch',
+      adLife:'Watch ad: +1 life',adMoves:'Watch ad: +5 moves',adNotReady:'Ad could not load right now, try again soon',
+      storeNA:'Purchases work only in the Google Play version',restore:'Restore purchases',restored:'Purchases checked',
+      adsRemoved:'Ads removed. Thank you!',privacyOpts:'Privacy options',privacyPolicy:'Privacy policy',
+      about:'Music and visuals made for this game. Sound effects: Kenney.nl (CC0).',testAd:'TEST AD',testAdNote:'Real ads appear only in the Android version',
+      close:'Close',payNote:'Payments are handled securely by Google Play.',limitReached:'Daily ad limit reached, come back tomorrow',
+      lifeGot:'You got +1 life!',
+      play:'PLAY',livesTitle:'Lives',lifeNext:'Next life',lifeFull:'Full in',lifeAll:'Refill all',
+      lifeNote:'Each level costs 1 life. Win the level and you get it back. Lives refill every 20 minutes.',
+      refund:'life returned',daily:'Gift',dailyTitle:'Daily Gift',dailyReady:'Ready!',dailyWait:'Come back tomorrow',day:'Day',
+      adLabel:'Advertisement',gameOver:'Game Over',again:'Play Again',shopSub:'Boosts & coins',rec:'New record!',
+      privacyTitle:'Privacy & data',dataPerms:'Data permissions',persAds:'Personalised ads',
+      persOff:'Off: only ads not based on your interests',persOn:'On: ads may be chosen by your interests',
+      trackPerm:'Advertising ID & tracking',notifPerm:'Notifications',offForNow:'Off for now – the game does not ask for this',
+      resetData:'Delete my game data',resetConfirm:'All progress, coins and settings will be deleted from this device. Are you sure? ("Remove Ads" can be restored from Google Play.)',
+      privacyBody:'<p><b>No account.</b> Your progress, coins and settings are stored only on this device; we run no servers of our own.</p><p><b>Ads:</b> The free version shows Google AdMob ads. Right now only <b>non-personalised</b> ads are shown; the game does not access your advertising ID and does not track you. Google may process basic data such as IP address and device information to deliver ads and prevent fraud.</p><p><b>Purchases</b> are handled entirely by Google Play; we never see your payment details.</p><p>We send <b>no notifications</b>. The game is not directed at children under 13.</p>',
+      consentTitle:'Welcome!',consentText:'By starting to play you accept our privacy policy. No account is needed and your progress stays on your phone. The free version shows non-personalised ads that do not track you.',
+      consentOk:'Accept & play',consentRead:'Read the privacy policy'},
+  ru:{score:'Очки',best:'Рекорд',moves:'Ходы',help:'Проведи или нажми на две фишки',combo:'Комбо',shuffle:'Нет ходов!',great:'Отлично!',amazing:'Потрясающе!',sp_h:'Луч! Взрываясь, очищает весь ряд или столбец',sp_b:'Бомба! Взрываясь, очищает область 3x3 вокруг себя',sp_p:'Призма! Поменяй её с фишкой — взорвутся все фишки этого цвета',spMega:'СУПЕРКОМБО!',iceGoal:'Разбей лёд',stoneGoal:'Разбей камни',sp_ice:'Лёд! Разбивается, когда взрывается фишка на нём. Толстый лёд — с двух ударов',sp_stone:'Камень! Его нельзя двигать. Трескается, когда рядом взрывается фишка или попадает особая фишка',tut1:'Сдвинь фишку: 3 одного цвета в ряд взрываются!',tut2:'Отлично! Выполни цель, пока не кончились ходы. 4 или 5 в ряд дают особую фишку',missions:'Задания',misTitle:'Ежедневные задания',misDone:'Задание выполнено!',misAll:'Всё готово! Новые задания завтра',misNew:'Новые задания каждый день',m_pop:'Взорви {n} фишек',m_special:'Создай {n} особых фишек',m_combo:'Сделай {n} суперкомбо',m_win:'Пройди {n} уровня',m_stars:'Собери {n} звёзд',m_endless:'Набери {n} очков за одну игру в «Бесконечном»',m_ice:'Разбей {n} льдинок',m_stone:'Разбей {n} камней',
+      map:'Карта',endless:'Бесконечный',level:'Уровень',target:'Цель',collect:'Собери',next:'Следующий',retry:'Ещё раз',menu:'Меню',
+      win:'Уровень пройден!',fail:'Ходы закончились',endlessDesc:'Без ограничения ходов',bestIs:'Рекорд',
+      settings:'Настройки',music:'Музыка',sfx:'Звуковые эффекты',vibe:'Вибрация',language:'Язык',ok:'Готово',
+      shop:'Магазин',hammer:'Молот',hammerDesc:'Разбей любую фишку',plus5:'+5 ходов',plus5Desc:'Ещё 5 ходов на уровне',
+      clear:'Взрыв поля',clearDesc:'Взорвать все фишки сразу',lives:'Жизни',livesDesc:'Восполнить жизни до 5',
+      packs:'Наборы монет',packsNote:'Покупки за деньги откроются после выхода игры в Google Play.',soon:'Скоро',
+      noCoins:'Недостаточно монет',noLives:'Жизни закончились! Пополни их в магазине',full:'Полно',cont:'Продолжить: +5 ходов',
+      have:'есть',gift:'Подарок',tapTile:'Нажми на фишку, чтобы разбить',bought:'Куплено!',owned:'Есть',lifeIn:'Новая жизнь',
+      noAds:'Убрать рекламу',noAdsDesc:'Реклама между уровнями исчезнет',noAdsOwned:'Версия без рекламы активна',buy:'Купить',
+      freeCoins:'Бесплатные монеты',freeCoinsDesc:'Посмотри короткую рекламу',left:'Осталось сегодня',watch:'Смотреть',
+      adLife:'Реклама: +1 жизнь',adMoves:'Реклама: +5 ходов',adNotReady:'Реклама сейчас не загрузилась, попробуй позже',
+      storeNA:'Покупки работают только в версии из Google Play',restore:'Восстановить покупки',restored:'Покупки проверены',
+      adsRemoved:'Реклама убрана. Спасибо!',privacyOpts:'Настройки конфиденциальности',privacyPolicy:'Политика конфиденциальности',
+      about:'Музыка и графика созданы для этой игры. Звуковые эффекты: Kenney.nl (CC0).',testAd:'ТЕСТОВАЯ РЕКЛАМА',testAdNote:'Настоящая реклама показывается только в Android-версии',
+      close:'Закрыть',payNote:'Оплата безопасно проходит через Google Play.',limitReached:'Лимит рекламы на сегодня исчерпан',
+      lifeGot:'+1 жизнь!',
+      play:'ИГРАТЬ',livesTitle:'Жизни',lifeNext:'Новая жизнь',lifeFull:'Все через',lifeAll:'Восполнить все',
+      lifeNote:'Каждый уровень стоит 1 жизнь. Пройдёшь уровень — жизнь вернётся. Жизни восстанавливаются каждые 20 минут.',
+      refund:'жизнь возвращена',daily:'Подарок',dailyTitle:'Ежедневный подарок',dailyReady:'Готов!',dailyWait:'Приходи завтра',day:'День',
+      adLabel:'Реклама',gameOver:'Игра окончена',again:'Ещё раз',shopSub:'Бонусы и монеты',rec:'Новый рекорд!',
+      privacyTitle:'Конфиденциальность',dataPerms:'Разрешения на данные',persAds:'Персонализированная реклама',
+      persOff:'Выкл.: только реклама, не основанная на интересах',persOn:'Вкл.: реклама может подбираться по интересам',
+      trackPerm:'Рекламный ID и отслеживание',notifPerm:'Уведомления',offForNow:'Пока выключено – игра не запрашивает это',
+      resetData:'Удалить мои игровые данные',resetConfirm:'Весь прогресс, монеты и настройки будут удалены с этого устройства. Уверен? («Убрать рекламу» можно восстановить из Google Play.)',
+      privacyBody:'<p><b>Без аккаунта.</b> Прогресс, монеты и настройки хранятся только на этом устройстве; собственных серверов у нас нет.</p><p><b>Реклама:</b> в бесплатной версии показывается реклама Google AdMob. Сейчас показывается только <b>неперсонализированная</b> реклама; игра не обращается к рекламному идентификатору и не отслеживает вас. Google может обрабатывать базовые данные (IP-адрес, сведения об устройстве) для показа рекламы и защиты от мошенничества.</p><p><b>Покупки</b> полностью обрабатывает Google Play; мы не видим платёжные данные.</p><p>Мы <b>не отправляем уведомления</b>. Игра не предназначена для детей младше 13 лет.</p>',
+      consentTitle:'Добро пожаловать!',consentText:'Начиная игру, ты принимаешь нашу политику конфиденциальности. Аккаунт не нужен, прогресс хранится только на телефоне. В бесплатной версии показывается неперсонализированная реклама без отслеживания.',
+      consentOk:'Принять и играть',consentRead:'Прочитать политику конфиденциальности'},
+  es:{score:'Puntos',best:'Récord',moves:'Movimientos',help:'Desliza o toca dos bloques',combo:'Combo',shuffle:'¡Sin movimientos!',great:'¡Genial!',amazing:'¡Increíble!',sp_h:'¡Gema rayo! Al explotar, limpia toda su fila o columna',sp_b:'¡Bomba! Al explotar, limpia el área de 3x3 a su alrededor',sp_p:'¡Prisma! Cámbialo por un bloque y explotarán todos los de ese color',spMega:'¡SÚPER COMBO!',iceGoal:'Rompe el hielo',stoneGoal:'Rompe las piedras',sp_ice:'¡Hielo! Se rompe cuando explota el bloque de encima. El hielo grueso necesita dos golpes',sp_stone:'¡Piedra! No se puede mover. Se agrieta cuando explota un bloque al lado o la alcanza una gema especial',tut1:'Desliza un bloque: ¡3 del mismo color en fila explotan!',tut2:'¡Genial! Cumple el objetivo antes de quedarte sin movimientos. 4 o 5 en fila crean una gema especial',missions:'Misiones',misTitle:'Misiones diarias',misDone:'¡Misión cumplida!',misAll:'¡Todo hecho! Nuevas misiones mañana',misNew:'Nuevas misiones cada día',m_pop:'Explota {n} bloques',m_special:'Crea {n} gemas especiales',m_combo:'Haz {n} súper combos',m_win:'Gana {n} niveles',m_stars:'Consigue {n} estrellas',m_endless:'Haz {n} puntos en una partida Infinita',m_ice:'Rompe {n} hielos',m_stone:'Rompe {n} piedras',
+      map:'Mapa',endless:'Infinito',level:'Nivel',target:'Objetivo',collect:'Recoge',next:'Siguiente nivel',retry:'Reintentar',menu:'Menú',
+      win:'¡Nivel completado!',fail:'Sin movimientos',endlessDesc:'Sin límite de movimientos',bestIs:'Récord',
+      settings:'Ajustes',music:'Música',sfx:'Efectos',vibe:'Vibración',language:'Idioma',ok:'Listo',
+      shop:'Tienda',hammer:'Martillo',hammerDesc:'Rompe el bloque que elijas',plus5:'+5 movimientos',plus5Desc:'5 movimientos más en un nivel',
+      clear:'Explosión total',clearDesc:'Revienta todos los bloques a la vez',lives:'Recargar vidas',livesDesc:'Vuelve a tener 5 vidas',
+      packs:'Packs de monedas',packsNote:'Las compras con dinero real se activarán cuando el juego llegue a Google Play.',soon:'Pronto',
+      noCoins:'No tienes suficientes monedas',noLives:'¡Sin vidas! Recárgalas en la tienda',full:'Llenas',cont:'Continuar: +5 movimientos',
+      have:'tienes',gift:'Regalo',tapTile:'Toca un bloque para romperlo',bought:'¡Comprado!',owned:'Tienes',lifeIn:'Próxima vida',
+      noAds:'Quitar anuncios',noAdsDesc:'Sin anuncios entre niveles',noAdsOwned:'Versión sin anuncios activa',buy:'Comprar',
+      freeCoins:'Monedas gratis',freeCoinsDesc:'Mira un anuncio corto',left:'Quedan hoy',watch:'Ver',
+      adLife:'Ver anuncio: +1 vida',adMoves:'Ver anuncio: +5 movimientos',adNotReady:'El anuncio no se pudo cargar, inténtalo en un momento',
+      storeNA:'Las compras solo funcionan en la versión de Google Play',restore:'Restaurar compras',restored:'Compras comprobadas',
+      adsRemoved:'¡Anuncios eliminados! Gracias',privacyOpts:'Opciones de privacidad',privacyPolicy:'Política de privacidad',
+      about:'Música y gráficos creados para este juego. Efectos de sonido: Kenney.nl (CC0).',testAd:'ANUNCIO DE PRUEBA',testAdNote:'Los anuncios reales solo aparecen en la versión de Android',
+      close:'Cerrar',payNote:'Los pagos se procesan de forma segura con Google Play.',limitReached:'Límite diario de anuncios alcanzado, vuelve mañana',
+      lifeGot:'¡+1 vida!',
+      play:'JUGAR',livesTitle:'Vidas',lifeNext:'Próxima vida',lifeFull:'Llenas en',lifeAll:'Recargar todas',
+      lifeNote:'Cada nivel cuesta 1 vida. Si ganas el nivel, la recuperas. Las vidas se recargan cada 20 minutos.',
+      refund:'vida devuelta',daily:'Regalo',dailyTitle:'Regalo diario',dailyReady:'¡Listo!',dailyWait:'Vuelve mañana',day:'Día',
+      adLabel:'Publicidad',gameOver:'Fin del juego',again:'Jugar otra vez',shopSub:'Potenciadores y monedas',rec:'¡Nuevo récord!',
+      privacyTitle:'Privacidad y datos',dataPerms:'Permisos de datos',persAds:'Anuncios personalizados',
+      persOff:'Desactivado: solo anuncios no basados en tus intereses',persOn:'Activado: los anuncios pueden basarse en tus intereses',
+      trackPerm:'ID de publicidad y seguimiento',notifPerm:'Notificaciones',offForNow:'Desactivado por ahora: el juego no lo pide',
+      resetData:'Borrar mis datos del juego',resetConfirm:'Se borrarán de este dispositivo todo el progreso, las monedas y los ajustes. ¿Seguro? («Quitar anuncios» se puede restaurar desde Google Play).',
+      privacyBody:'<p><b>Sin cuenta.</b> Tu progreso, tus monedas y tus ajustes se guardan solo en este dispositivo; no tenemos servidores propios.</p><p><b>Anuncios:</b> la versión gratuita muestra anuncios de Google AdMob. Ahora solo se muestran anuncios <b>no personalizados</b>; el juego no accede a tu ID de publicidad ni te rastrea. Google puede tratar datos básicos, como la dirección IP y la información del dispositivo, para mostrar anuncios y evitar fraudes.</p><p>Las <b>compras</b> las gestiona por completo Google Play; nunca vemos tus datos de pago.</p><p><b>No enviamos notificaciones.</b> El juego no está dirigido a menores de 13 años.</p>',
+      consentTitle:'¡Bienvenido!',consentText:'Al empezar a jugar aceptas nuestra política de privacidad. No necesitas cuenta y tu progreso se queda en tu teléfono. La versión gratuita muestra anuncios no personalizados que no te rastrean.',
+      consentOk:'Aceptar y jugar',consentRead:'Leer la política de privacidad'},
+  pt:{score:'Pontos',best:'Recorde',moves:'Jogadas',help:'Deslize ou toque em dois blocos',combo:'Combo',shuffle:'Sem jogadas!',great:'Ótimo!',amazing:'Incrível!',sp_h:'Gema raio! Ao estourar, limpa toda a linha ou coluna',sp_b:'Bomba! Ao estourar, limpa a área 3x3 ao redor',sp_p:'Prisma! Troque com um bloco e todos dessa cor estouram',spMega:'SUPER COMBO!',iceGoal:'Quebre o gelo',stoneGoal:'Quebre as pedras',sp_ice:'Gelo! Quebra quando o bloco em cima estoura. Gelo grosso precisa de dois golpes',sp_stone:'Pedra! Não pode ser movida. Racha quando um bloco ao lado estoura ou uma gema especial a atinge',tut1:'Deslize um bloco: 3 da mesma cor em linha estouram!',tut2:'Ótimo! Cumpra a meta antes de acabarem as jogadas. 4 ou 5 em linha criam uma gema especial',missions:'Missões',misTitle:'Missões diárias',misDone:'Missão cumprida!',misAll:'Tudo feito! Novas missões amanhã',misNew:'Novas missões todo dia',m_pop:'Estoure {n} blocos',m_special:'Crie {n} gemas especiais',m_combo:'Faça {n} super combos',m_win:'Vença {n} fases',m_stars:'Ganhe {n} estrelas',m_endless:'Faça {n} pontos em uma partida Infinita',m_ice:'Quebre {n} gelos',m_stone:'Quebre {n} pedras',
+      map:'Mapa',endless:'Infinito',level:'Nível',target:'Meta',collect:'Colete',next:'Próximo nível',retry:'Tentar de novo',menu:'Menu',
+      win:'Nível concluído!',fail:'Sem jogadas',endlessDesc:'Sem limite de jogadas',bestIs:'Recorde',
+      settings:'Configurações',music:'Música',sfx:'Efeitos sonoros',vibe:'Vibração',language:'Idioma',ok:'Pronto',
+      shop:'Loja',hammer:'Martelo',hammerDesc:'Quebre o bloco que quiser',plus5:'+5 jogadas',plus5Desc:'Mais 5 jogadas no nível',
+      clear:'Explosão total',clearDesc:'Estoura todos os blocos de uma vez',lives:'Recarregar vidas',livesDesc:'Volte a ter 5 vidas',
+      packs:'Pacotes de moedas',packsNote:'Compras com dinheiro real serão liberadas quando o jogo chegar ao Google Play.',soon:'Em breve',
+      noCoins:'Moedas insuficientes',noLives:'Sem vidas! Recarregue na loja',full:'Cheias',cont:'Continuar: +5 jogadas',
+      have:'você tem',gift:'Presente',tapTile:'Toque em um bloco para quebrá-lo',bought:'Comprado!',owned:'Você tem',lifeIn:'Próxima vida',
+      noAds:'Remover anúncios',noAdsDesc:'Sem anúncios entre os níveis',noAdsOwned:'Versão sem anúncios ativa',buy:'Comprar',
+      freeCoins:'Moedas grátis',freeCoinsDesc:'Assista a um anúncio curto',left:'Restam hoje',watch:'Assistir',
+      adLife:'Ver anúncio: +1 vida',adMoves:'Ver anúncio: +5 jogadas',adNotReady:'Não foi possível carregar o anúncio, tente de novo em breve',
+      storeNA:'As compras só funcionam na versão do Google Play',restore:'Restaurar compras',restored:'Compras verificadas',
+      adsRemoved:'Anúncios removidos. Obrigado!',privacyOpts:'Opções de privacidade',privacyPolicy:'Política de privacidade',
+      about:'Música e visual criados para este jogo. Efeitos sonoros: Kenney.nl (CC0).',testAd:'ANÚNCIO DE TESTE',testAdNote:'Anúncios reais só aparecem na versão Android',
+      close:'Fechar',payNote:'Os pagamentos são processados com segurança pelo Google Play.',limitReached:'Limite diário de anúncios atingido, volte amanhã',
+      lifeGot:'+1 vida!',
+      play:'JOGAR',livesTitle:'Vidas',lifeNext:'Próxima vida',lifeFull:'Cheias em',lifeAll:'Recarregar todas',
+      lifeNote:'Cada nível custa 1 vida. Vença o nível e ela volta. As vidas recarregam a cada 20 minutos.',
+      refund:'vida devolvida',daily:'Presente',dailyTitle:'Presente diário',dailyReady:'Pronto!',dailyWait:'Volte amanhã',day:'Dia',
+      adLabel:'Publicidade',gameOver:'Fim de jogo',again:'Jogar de novo',shopSub:'Bônus e moedas',rec:'Novo recorde!',
+      privacyTitle:'Privacidade e dados',dataPerms:'Permissões de dados',persAds:'Anúncios personalizados',
+      persOff:'Desativado: só anúncios não baseados nos seus interesses',persOn:'Ativado: os anúncios podem usar seus interesses',
+      trackPerm:'ID de publicidade e rastreamento',notifPerm:'Notificações',offForNow:'Desativado por enquanto – o jogo não pede isso',
+      resetData:'Apagar meus dados do jogo',resetConfirm:'Todo o progresso, as moedas e as configurações serão apagados deste dispositivo. Tem certeza? ("Remover anúncios" pode ser restaurado pelo Google Play.)',
+      privacyBody:'<p><b>Sem conta.</b> Seu progresso, suas moedas e configurações ficam salvos só neste dispositivo; não temos servidores próprios.</p><p><b>Anúncios:</b> a versão gratuita mostra anúncios do Google AdMob. No momento, só são exibidos anúncios <b>não personalizados</b>; o jogo não acessa seu ID de publicidade e não rastreia você. O Google pode processar dados básicos, como endereço IP e informações do dispositivo, para exibir anúncios e evitar fraudes.</p><p>As <b>compras</b> são processadas inteiramente pelo Google Play; nunca vemos seus dados de pagamento.</p><p><b>Não enviamos notificações.</b> O jogo não é direcionado a menores de 13 anos.</p>',
+      consentTitle:'Boas-vindas!',consentText:'Ao começar a jogar, você aceita nossa política de privacidade. Não é preciso criar conta e seu progresso fica no seu celular. A versão gratuita mostra anúncios não personalizados que não rastreiam você.',
+      consentOk:'Aceitar e jogar',consentRead:'Ler a política de privacidade'},
+  de:{score:'Punkte',best:'Rekord',moves:'Züge',help:'Wische oder tippe zwei Steine an',combo:'Kombo',shuffle:'Keine Züge!',great:'Super!',amazing:'Fantastisch!',sp_h:'Strahlstein! Beim Platzen räumt er die ganze Reihe oder Spalte',sp_b:'Bombe! Beim Platzen räumt sie das 3x3-Feld um sich herum',sp_p:'Prisma! Tausche es mit einem Stein, dann platzen alle dieser Farbe',spMega:'SUPER-KOMBO!',iceGoal:'Brich das Eis',stoneGoal:'Brich die Felsen',sp_ice:'Eis! Es bricht, wenn der Stein darauf platzt. Dickes Eis braucht zwei Treffer',sp_stone:'Fels! Er lässt sich nicht bewegen. Er bekommt Risse, wenn daneben ein Stein platzt oder ein Spezialstein ihn trifft',tut1:'Wische einen Stein: 3 gleiche Farben in einer Reihe platzen!',tut2:'Super! Erreiche das Ziel, bevor die Züge ausgehen. 4 oder 5 in einer Reihe ergeben einen Spezialstein',missions:'Aufgaben',misTitle:'Tägliche Aufgaben',misDone:'Aufgabe geschafft!',misAll:'Alles erledigt! Morgen gibt es neue Aufgaben',misNew:'Jeden Tag neue Aufgaben',m_pop:'Lass {n} Steine platzen',m_special:'Erzeuge {n} Spezialsteine',m_combo:'Schaffe {n} Super-Kombos',m_win:'Gewinne {n} Level',m_stars:'Sammle {n} Sterne',m_endless:'Erreiche {n} Punkte in einem Endlos-Spiel',m_ice:'Brich {n} Eisfelder',m_stone:'Brich {n} Felsen',
+      map:'Karte',endless:'Endlos',level:'Level',target:'Ziel',collect:'Sammle',next:'Nächstes Level',retry:'Nochmal',menu:'Menü',
+      win:'Level geschafft!',fail:'Keine Züge mehr',endlessDesc:'Ohne Zuglimit',bestIs:'Rekord',
+      settings:'Einstellungen',music:'Musik',sfx:'Soundeffekte',vibe:'Vibration',language:'Sprache',ok:'Fertig',
+      shop:'Shop',hammer:'Hammer',hammerDesc:'Zerschlage einen beliebigen Stein',plus5:'+5 Züge',plus5Desc:'5 Züge mehr im Level',
+      clear:'Brett-Explosion',clearDesc:'Lässt alle Steine auf einmal platzen',lives:'Leben auffüllen',livesDesc:'Zurück auf 5 Leben',
+      packs:'Münzpakete',packsNote:'Käufe mit echtem Geld sind möglich, sobald das Spiel bei Google Play erscheint.',soon:'Bald',
+      noCoins:'Nicht genug Münzen',noLives:'Keine Leben mehr! Fülle sie im Shop auf',full:'Voll',cont:'Weiter: +5 Züge',
+      have:'du hast',gift:'Geschenk',tapTile:'Tippe auf einen Stein, um ihn zu zerschlagen',bought:'Gekauft!',owned:'Vorhanden',lifeIn:'Nächstes Leben',
+      noAds:'Werbung entfernen',noAdsDesc:'Keine Werbung mehr zwischen den Levels',noAdsOwned:'Werbefreie Version aktiv',buy:'Kaufen',
+      freeCoins:'Gratis-Münzen',freeCoinsDesc:'Sieh dir eine kurze Werbung an',left:'Heute übrig',watch:'Ansehen',
+      adLife:'Werbung: +1 Leben',adMoves:'Werbung: +5 Züge',adNotReady:'Werbung konnte nicht geladen werden, versuch es gleich nochmal',
+      storeNA:'Käufe funktionieren nur in der Google-Play-Version',restore:'Käufe wiederherstellen',restored:'Käufe geprüft',
+      adsRemoved:'Werbung entfernt. Danke!',privacyOpts:'Datenschutzoptionen',privacyPolicy:'Datenschutzerklärung',
+      about:'Musik und Grafik für dieses Spiel erstellt. Soundeffekte: Kenney.nl (CC0).',testAd:'TESTWERBUNG',testAdNote:'Echte Werbung erscheint nur in der Android-Version',
+      close:'Schließen',payNote:'Zahlungen werden sicher über Google Play abgewickelt.',limitReached:'Tageslimit für Werbung erreicht, komm morgen wieder',
+      lifeGot:'+1 Leben!',
+      play:'SPIELEN',livesTitle:'Leben',lifeNext:'Nächstes Leben',lifeFull:'Voll in',lifeAll:'Alle auffüllen',
+      lifeNote:'Jedes Level kostet 1 Leben. Gewinnst du, bekommst du es zurück. Leben füllen sich alle 20 Minuten auf.',
+      refund:'Leben zurück',daily:'Geschenk',dailyTitle:'Tagesgeschenk',dailyReady:'Bereit!',dailyWait:'Komm morgen wieder',day:'Tag',
+      adLabel:'Werbung',gameOver:'Spiel vorbei',again:'Nochmal spielen',shopSub:'Booster & Münzen',rec:'Neuer Rekord!',
+      privacyTitle:'Datenschutz & Daten',dataPerms:'Datenberechtigungen',persAds:'Personalisierte Werbung',
+      persOff:'Aus: nur Werbung, die nicht auf deinen Interessen basiert',persOn:'An: Werbung kann nach deinen Interessen ausgewählt werden',
+      trackPerm:'Werbe-ID & Tracking',notifPerm:'Benachrichtigungen',offForNow:'Vorerst aus – das Spiel fragt nicht danach',
+      resetData:'Meine Spieldaten löschen',resetConfirm:'Alle Fortschritte, Münzen und Einstellungen werden von diesem Gerät gelöscht. Bist du sicher? („Werbung entfernen“ kann über Google Play wiederhergestellt werden.)',
+      privacyBody:'<p><b>Kein Konto.</b> Dein Fortschritt, deine Münzen und Einstellungen werden nur auf diesem Gerät gespeichert; wir betreiben keine eigenen Server.</p><p><b>Werbung:</b> Die kostenlose Version zeigt Werbung von Google AdMob. Derzeit wird nur <b>nicht personalisierte</b> Werbung gezeigt; das Spiel greift nicht auf deine Werbe-ID zu und verfolgt dich nicht. Google kann grundlegende Daten wie IP-Adresse und Geräteinformationen verarbeiten, um Werbung auszuliefern und Betrug zu verhindern.</p><p><b>Käufe</b> werden vollständig über Google Play abgewickelt; deine Zahlungsdaten sehen wir nie.</p><p>Wir senden <b>keine Benachrichtigungen</b>. Das Spiel richtet sich nicht an Kinder unter 13 Jahren.</p>',
+      consentTitle:'Willkommen!',consentText:'Mit dem Spielstart akzeptierst du unsere Datenschutzerklärung. Du brauchst kein Konto und dein Fortschritt bleibt auf deinem Handy. Die kostenlose Version zeigt nicht personalisierte Werbung ohne Tracking.',
+      consentOk:'Akzeptieren & spielen',consentRead:'Datenschutzerklärung lesen'},
+  fr:{score:'Score',best:'Record',moves:'Coups',help:'Glisse ou touche deux blocs',combo:'Combo',shuffle:'Plus de coups !',great:'Super !',amazing:'Incroyable !',sp_h:'Gemme rayon ! En éclatant, elle vide toute sa ligne ou colonne',sp_b:'Bombe ! En éclatant, elle vide la zone 3x3 autour d\'elle',sp_p:'Prisme ! Échange-le avec un bloc pour faire éclater toute cette couleur',spMega:'SUPER COMBO !',iceGoal:'Brise la glace',stoneGoal:'Brise les pierres',sp_ice:'Glace ! Elle se brise quand le bloc dessus éclate. La glace épaisse demande deux coups',sp_stone:'Pierre ! Elle ne bouge pas. Elle se fissure quand un bloc voisin éclate ou qu\'une gemme spéciale la touche',tut1:'Fais glisser un bloc : 3 de la même couleur alignés éclatent !',tut2:'Super ! Atteins l\'objectif avant la fin des coups. Aligner 4 ou 5 crée une gemme spéciale',missions:'Missions',misTitle:'Missions du jour',misDone:'Mission accomplie !',misAll:'Tout est fait ! Nouvelles missions demain',misNew:'Nouvelles missions chaque jour',m_pop:'Fais éclater {n} blocs',m_special:'Crée {n} gemmes spéciales',m_combo:'Fais {n} super combos',m_win:'Gagne {n} niveaux',m_stars:'Gagne {n} étoiles',m_endless:'Marque {n} points en une partie Infinie',m_ice:'Brise {n} glaces',m_stone:'Brise {n} pierres',
+      map:'Carte',endless:'Infini',level:'Niveau',target:'Objectif',collect:'Collecte',next:'Niveau suivant',retry:'Réessayer',menu:'Menu',
+      win:'Niveau terminé !',fail:'Plus de coups',endlessDesc:'Sans limite de coups',bestIs:'Record',
+      settings:'Paramètres',music:'Musique',sfx:'Effets sonores',vibe:'Vibration',language:'Langue',ok:'OK',
+      shop:'Boutique',hammer:'Marteau',hammerDesc:'Brise le bloc de ton choix',plus5:'+5 coups',plus5Desc:'5 coups de plus dans un niveau',
+      clear:'Explosion totale',clearDesc:'Fait éclater tous les blocs d’un coup',lives:'Recharger les vies',livesDesc:'Reviens à 5 vies',
+      packs:'Packs de pièces',packsNote:'Les achats en argent réel ouvriront au lancement du jeu sur Google Play.',soon:'Bientôt',
+      noCoins:'Pas assez de pièces',noLives:'Plus de vies ! Recharge-les dans la boutique',full:'Pleines',cont:'Continuer : +5 coups',
+      have:'tu as',gift:'Cadeau',tapTile:'Touche un bloc pour le briser',bought:'Acheté !',owned:'Possédé',lifeIn:'Prochaine vie',
+      noAds:'Supprimer les pubs',noAdsDesc:'Plus de pubs entre les niveaux',noAdsOwned:'Version sans pub active',buy:'Acheter',
+      freeCoins:'Pièces gratuites',freeCoinsDesc:'Regarde une courte pub',left:'Restant aujourd’hui',watch:'Regarder',
+      adLife:'Pub : +1 vie',adMoves:'Pub : +5 coups',adNotReady:'La pub n’a pas pu se charger, réessaie bientôt',
+      storeNA:'Les achats ne fonctionnent que dans la version Google Play',restore:'Restaurer les achats',restored:'Achats vérifiés',
+      adsRemoved:'Pubs supprimées. Merci !',privacyOpts:'Options de confidentialité',privacyPolicy:'Politique de confidentialité',
+      about:'Musique et visuels créés pour ce jeu. Effets sonores : Kenney.nl (CC0).',testAd:'PUB DE TEST',testAdNote:'Les vraies pubs n’apparaissent que dans la version Android',
+      close:'Fermer',payNote:'Les paiements sont traités en toute sécurité par Google Play.',limitReached:'Limite quotidienne de pubs atteinte, reviens demain',
+      lifeGot:'+1 vie !',
+      play:'JOUER',livesTitle:'Vies',lifeNext:'Prochaine vie',lifeFull:'Pleines dans',lifeAll:'Tout recharger',
+      lifeNote:'Chaque niveau coûte 1 vie. Gagne le niveau et tu la récupères. Les vies se rechargent toutes les 20 minutes.',
+      refund:'vie rendue',daily:'Cadeau',dailyTitle:'Cadeau du jour',dailyReady:'Prêt !',dailyWait:'Reviens demain',day:'Jour',
+      adLabel:'Publicité',gameOver:'Partie terminée',again:'Rejouer',shopSub:'Bonus et pièces',rec:'Nouveau record !',
+      privacyTitle:'Confidentialité',dataPerms:'Autorisations de données',persAds:'Pubs personnalisées',
+      persOff:'Désactivé : seulement des pubs non basées sur tes centres d’intérêt',persOn:'Activé : les pubs peuvent suivre tes centres d’intérêt',
+      trackPerm:'Identifiant publicitaire et suivi',notifPerm:'Notifications',offForNow:'Désactivé pour l’instant – le jeu ne le demande pas',
+      resetData:'Supprimer mes données de jeu',resetConfirm:'Toute la progression, les pièces et les paramètres seront supprimés de cet appareil. Tu es sûr ? (« Supprimer les pubs » peut être restauré via Google Play.)',
+      privacyBody:'<p><b>Aucun compte.</b> Ta progression, tes pièces et tes paramètres sont enregistrés uniquement sur cet appareil ; nous n’avons pas de serveurs.</p><p><b>Publicités :</b> la version gratuite affiche des pubs Google AdMob. Pour l’instant, seules des pubs <b>non personnalisées</b> sont affichées ; le jeu n’accède pas à ton identifiant publicitaire et ne te suit pas. Google peut traiter des données de base, comme l’adresse IP et les informations de l’appareil, pour diffuser les pubs et éviter la fraude.</p><p>Les <b>achats</b> sont entièrement gérés par Google Play ; nous ne voyons jamais tes données de paiement.</p><p><b>Aucune notification</b> n’est envoyée. Le jeu ne s’adresse pas aux enfants de moins de 13 ans.</p>',
+      consentTitle:'Bienvenue !',consentText:'En commençant à jouer, tu acceptes notre politique de confidentialité. Aucun compte n’est nécessaire et ta progression reste sur ton téléphone. La version gratuite affiche des pubs non personnalisées qui ne te suivent pas.',
+      consentOk:'Accepter et jouer',consentRead:'Lire la politique de confidentialité'}
+};
+
+// ---------- Ayarlar ----------
+const sysLang = (navigator.language || 'en').slice(0, 2);
+const settings = { musicVol: .6, sfxVol: .9, vibe: true, persAds: false, lang: TEXT[sysLang] ? sysLang : 'en' };
+
+// ---------- Gizlilik: reklam SDK'sının veri izinleri ----------
+// Tek yerden yönetilir. Şimdilik takip (reklam kimliği) ve bildirim KAPALI.
+// Açmak için: FEATURES değerini true yap + scripts/patch-android.mjs'teki ilgili izni listeden çıkar
+// + gizlilik politikasını ve Play Console "Veri güvenliği" formunu güncelle.
+const FEATURES = {
+  tracking: false,        // reklam kimliği / kişiselleştirilmiş reklam
+  notifications: false    // bildirim izni
+};
+const Privacy = {
+  // Kişiselleştirilmiş reklam ancak özellik açıksa VE oyuncu izin verdiyse
+  get personalized() { return FEATURES.tracking && settings.persAds === true; },
+  // Her reklam isteğine eklenen ortak ayarlar (npa = kişiselleştirilmemiş reklam)
+  adOptions(adId) { return { adId, isTesting: CONFIG.adsTesting, npa: !this.personalized }; }
+};
+try { Object.assign(settings, JSON.parse(localStorage.getItem('gleampop_settings') || '{}')); } catch (e) {}
+if (!TEXT[settings.lang]) settings.lang = 'en';
+// eski sürümün açık/kapalı ayarlarını kaydırıcıya çevir
+if (settings.music === false) settings.musicVol = 0;
+if (settings.sfx === false) settings.sfxVol = 0;
+delete settings.music; delete settings.sfx;
+const saveSettings = () => { try { localStorage.setItem('gleampop_settings', JSON.stringify(settings)); } catch (e) {} };
+let T = TEXT[settings.lang];
+function applyTexts() {
+  T = TEXT[settings.lang];
+  document.documentElement.lang = settings.lang;
+  document.querySelectorAll('[data-t]').forEach(el => el.textContent = T[el.dataset.t]);
+}
+applyTexts();
+
+// ---------- Kayıt (ilerleme, altın, canlar, özel güçler) ----------
+const save = { unlocked: 1, stars: {}, coins: 200, inv: { hammer: 1, plus5: 1, clear: 1 }, lives: MAX_LIVES, lifeTs: Date.now(), gifts: {}, best: 0 };
+try {
+  const s = JSON.parse(localStorage.getItem('gleampop_save') || 'null');
+  if (s) { Object.assign(save, s); save.inv = Object.assign({ hammer: 0, plus5: 0, clear: 0 }, s.inv); }
+  else {
+    save.unlocked = Math.max(1, +localStorage.getItem('renkpatlat_level') || 1);
+    save.best = +localStorage.getItem('renkpatlat_best') || 0;
+  }
+} catch (e) {}
+const persist = () => { try { localStorage.setItem('gleampop_save', JSON.stringify(save)); } catch (e) {} };
+
+// ---------- Bölümler ----------
+const BOOST_ICON = { hammer: ICON.hammer, plus5: '+5', clear: ICON.blast };
+const boostIco = k => k === 'plus5' ? '+5' : ico(k === 'clear' ? 'blast' : k);
+// Zorluk eğrisi simülasyonla ayarlandı, özel bloklar dahil (scripts/zorluk_ozel_sim.py, formül "son", 200 deneme;
+// "iyi oyuncu" geçme oranı): 1-3: 5 renk, ~%97 (öğrenme) | 4-8: ~%90 | 10: %84 | 20: ~%62 | 30+: ~%45-55 (güçlendiricilerle daha kolay)
+const ICE_F = { c0: 8, cs: 2, cmax: 28, thickFrom: 14, tk: 3 };      // buz: kare sayısı, kalın buz hangi bölümden ve ne hızla
+const STONE_F = { c0: 13, cs: 2, cmax: 20, hardFrom: 15, hk: 3 };    // kaya: sayı, 2 vuruşluk kaya hangi bölümden ve ne hızla
+// Engellerin yeri: bölüme göre sabit (her denemede aynı), sağ-sol simetrik. Buz kenar ve köşelere konmaz (oralar çok zor)
+function obstacleCells(n, count, kind) {
+  const rand = seeded(n * 131 + kind * 7 + 11), out = [];
+  while (out.length < count) {
+    const r = 1 + Math.floor(rand() * (kind ? 5 : 6)), c = kind ? Math.floor(rand() * N / 2) : 1 + Math.floor(rand() * 3);
+    for (const cc of [c, N - 1 - c]) { const k = r * N + cc; if (!out.includes(k) && out.length < count) out.push(k); }
+  }
+  return out;
+}
+function levelDef(n) {
+  const gift = n % 3 === 0 ? ['hammer', 'plus5', 'clear'][(n / 3 - 1) % 3] : null; // her 3 bölümde bir hediye
+  if (n <= EASY_LEVELS) return { n, moves: 20, type: 'score', target: [1900, 2200, 2500][n - 1], gift };
+  const moves = 22 + Math.min(Math.floor((n - 4) / 3), 8);                     // 22 -> 30 hamle
+  if (n % 4 === 0) {                                                           // her 4 bölümde bir "renk topla"
+    const perMove = Math.min(.78 + (n - 4) * .022, 1.28);
+    return { n, moves, type: 'collect', color: (n / 4 - 1) % K, count: Math.round(moves * perMove), gift };
+  }
+  if (n >= 6 && n % 4 === 2) {                                                 // 6, 10, 14...: "buzu kır"
+    const cells = Math.min(ICE_F.c0 + Math.floor((n - 6) / 4) * ICE_F.cs, ICE_F.cmax);
+    const thick = n >= ICE_F.thickFrom ? Math.min(Math.floor((n - ICE_F.thickFrom) / 4) * ICE_F.tk + 2, cells) : 0;
+    return { n, moves, type: 'ice', ice: obstacleCells(n, cells, 0).map((k, i) => [k, i < thick ? 2 : 1]), count: cells, gift };
+  }
+  if (n >= 11 && n % 4 === 3) {                                                // 11, 15, 19...: "taşları kır"
+    const cnt = Math.min(STONE_F.c0 + Math.floor((n - 11) / 4) * STONE_F.cs, STONE_F.cmax);
+    const hard = n >= STONE_F.hardFrom ? Math.min(Math.floor((n - STONE_F.hardFrom) / 4) * STONE_F.hk + 2, cnt) : 0;
+    return { n, moves, type: 'stone', stones: obstacleCells(n, cnt, 1).map((k, i) => [k, i < hard ? 2 : 1]), count: cnt, gift };
+  }
+  const perMove = Math.min(84 + (n - 4) * 1.9, 140);                           // hamle başına beklenen puan
+  return { n, moves, type: 'score', target: Math.round(moves * perMove / 50) * 50, gift };
+}
+
+// ---------- Durum ----------
+const FXCOL = ['#ff6b78', '#ffbe3d', '#3ddc7a', '#5b9bff', '#bd7bff', '#ff6fbf'];
+const EASY_LEVELS = 3;            // ilk 3 bölüm 5 renkle (öğrenme), sonra 6 renk
+let numColors = K;
+const colorsFor = (m, n) => m === 'level' && n <= EASY_LEVELS ? 5 : K;
+const board = document.getElementById('board');
+const $ = id => document.getElementById(id);
+let grid = [], score = 0, moves = 0, busy = false, sel = null, hintTimer = 0;
+let mode = 'level', level = 1, def = null, collected = 0, finished = false, aiming = null;
+let adContinueUsed = false, endlessStart = 0;
+
+const rnd = n => Math.floor(Math.random() * n);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const fallDur = d => 170 + d * 55;
+const colors = () => grid.map(row => row.map(t => t && t.sp !== 'p' && !t.stone ? t.color : null));   // prizma ve taş eşleşmez
+const locked = () => finished || (mode === 'level' && moves <= 0);
+let ice = [], iceEls = [], iceDone = 0, stoneDone = 0;
+const progress = () => def.type === 'collect' ? collected : def.type === 'ice' ? iceDone : def.type === 'stone' ? stoneDone : score;
+const goalNeed = d => d.type === 'score' ? d.target : d.count;
+const goalDone = () => progress() >= goalNeed(def);
+function goalHtml(d, prog) {
+  const p = prog == null ? '' : `${Math.min(prog, goalNeed(d))} / `;
+  if (d.type === 'collect') return `${T.collect} ${swatch(d.color)} ${p}${d.count}`;
+  if (d.type === 'ice') return `${T.iceGoal} <i class="sw8 swice"></i> ${p}${d.count}`;
+  if (d.type === 'stone') return `${T.stoneGoal} <i class="sw8 swstone"></i> ${p}${d.count}`;
+  return `${T.target}: ${p}${d.target}`;
+}
+
+// ---------- Eşleşme mantığı ----------
+function findMatches(m) {
+  const set = new Set(), runs = []; let bonus = 0, maxRun = 0;
+  const run = (len, cells, dir, color) => { if (len >= 3) { cells.forEach(k => set.add(k)); runs.push({ len, cells, dir, color }); maxRun = Math.max(maxRun, len); if (len > 3) bonus += (len - 3) * 30; } };
+  for (let r = 0; r < N; r++) {
+    let c = 0;
+    while (c < N) {
+      let e = c + 1;
+      while (e < N && m[r][c] != null && m[r][e] === m[r][c]) e++;
+      if (m[r][c] != null) run(e - c, Array.from({length:e - c}, (_, i) => r * N + c + i), 'h', m[r][c]);
+      c = e;
+    }
+  }
+  for (let c = 0; c < N; c++) {
+    let r = 0;
+    while (r < N) {
+      let e = r + 1;
+      while (e < N && m[r][c] != null && m[e][c] === m[r][c]) e++;
+      if (m[r][c] != null) run(e - r, Array.from({length:e - r}, (_, i) => (r + i) * N + c), 'v', m[r][c]);
+      r = e;
+    }
+  }
+  return { set, bonus, maxRun, runs };
+}
+// Hangi eşleşmeden hangi özel blok doğar: 5'li düz -> prizma, L/T (kesişen iki sıra) -> bomba,
+// 4'lü -> ışın (yatay 4'lü satırı, dikey 4'lü sütunu temizler). Blok, oyuncunun kaydırdığı karede doğar.
+function planSpecials(runs, prefer) {
+  const parent = runs.map((_, i) => i), owner = new Map();
+  const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  runs.forEach((rn, i) => rn.cells.forEach(k => { if (owner.has(k)) parent[find(i)] = find(owner.get(k)); else owner.set(k, i); }));
+  const groups = new Map();
+  runs.forEach((rn, i) => { const g = find(i); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(rn); });
+  const out = [];
+  for (const rs of groups.values()) {
+    const maxLen = Math.max(...rs.map(x => x.len));
+    const hasH = rs.some(x => x.dir === 'h'), hasV = rs.some(x => x.dir === 'v');
+    const sp = maxLen >= 5 ? 'p' : (hasH && hasV) ? 'b' : maxLen === 4 ? rs[0].dir : null;
+    if (!sp) continue;
+    const cells = [...new Set(rs.flatMap(x => x.cells))];
+    let k = prefer ? prefer.find(p => cells.includes(p)) : undefined;
+    if (k == null && sp === 'b') { const seen = new Set(); rs.forEach(x => x.cells.forEach(c => { if (seen.has(c)) k = c; seen.add(c); })); }
+    if (k == null) { const lr = rs.find(x => x.len === maxLen); k = lr.cells[Math.floor((lr.len - 1) / 2)]; }
+    out.push({ k, sp, color: rs[0].color, cells });
+  }
+  return out;
+}
+// Özel bloğun patlattığı kareler
+function areaOf(sp, r, c) {
+  const out = [];
+  if (sp === 'h') for (let i = 0; i < N; i++) out.push(r * N + i);
+  else if (sp === 'v') for (let i = 0; i < N; i++) out.push(i * N + c);
+  else if (sp === 'b') for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < N && cc >= 0 && cc < N) out.push(rr * N + cc);
+  }
+  return out;
+}
+function commonColor() {
+  const cnt = new Array(K).fill(0);
+  grid.forEach(row => row.forEach(t => { if (t && t.color >= 0) cnt[t.color]++; }));
+  return cnt.indexOf(Math.max(...cnt));
+}
+// Patlayacak kümedeki özel blokları tetikler (zincirleme); keep: bu turda yeni doğacak bloklar (patlamaz)
+function expand(set, keep) {
+  const fired = [], queue = [...set];
+  while (queue.length) {
+    const k = queue.pop(), r = Math.floor(k / N), c = k % N, t = grid[r][c];
+    if (!t || !t.sp || t.fired) continue;
+    t.fired = true;
+    let area;
+    if (t.sp === 'p') {
+      const col = t.target != null ? t.target : commonColor();
+      area = []; grid.forEach((row, rr) => row.forEach((x, cc) => { if (x && x.sp !== 'p' && x.color === col) area.push(rr * N + cc); }));
+    } else area = areaOf(t.sp, r, c);
+    fired.push({ r, c, sp: t.sp, color: t.color, area });
+    for (const a of area) if (!set.has(a) && !keep.has(a)) { set.add(a); queue.push(a); }
+  }
+  return fired;
+}
+// Hamle var mı: önce normal eşleşme, yoksa özel blok takası (prizma her şeyle, iki özel blok birbiriyle)
+function specialMove() {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) for (const [dr, dc] of [[0,1],[1,0]]) {
+    const r2 = r + dr, c2 = c + dc;
+    if (r2 >= N || c2 >= N) continue;
+    const a = grid[r][c], b = grid[r2][c2];
+    if (a && b && !a.stone && !b.stone && (a.sp === 'p' || b.sp === 'p' || (a.sp && b.sp))) return [[r,c],[r2,c2]];
+  }
+  return null;
+}
+const anyMove = () => findMove(colors()) || specialMove();
+function findMove(m) {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    for (const [dr, dc] of [[0,1],[1,0]]) {
+      const r2 = r + dr, c2 = c + dc;
+      if (r2 >= N || c2 >= N || m[r][c] === m[r2][c2]) continue;
+      [m[r][c], m[r2][c2]] = [m[r2][c2], m[r][c]];
+      const ok = findMatches(m).set.size > 0;
+      [m[r][c], m[r2][c2]] = [m[r2][c2], m[r][c]];
+      if (ok) return [[r,c],[r2,c2]];
+    }
+  }
+  return null;
+}
+function genColors() {
+  let m;
+  do {
+    m = [];
+    for (let r = 0; r < N; r++) {
+      m[r] = [];
+      for (let c = 0; c < N; c++) {
+        let col;
+        do { col = rnd(numColors); } while (
+          (c >= 2 && m[r][c-1] === col && m[r][c-2] === col) ||
+          (r >= 2 && m[r-1][c] === col && m[r-2][c] === col));
+        m[r][c] = col;
+      }
+    }
+  } while (!findMove(m));
+  return m;
+}
+
+// ---------- Taşlar ----------
+function place(t, r, c, dur) {
+  t.el.style.transitionDuration = dur == null ? '' : dur + 'ms';
+  t.el.style.transform = `translate(${c * 100}%,${r * 100}%)`;
+}
+function makeTile(color, r, c, startRow) {
+  const el = document.createElement('div');
+  el.className = 'tile';
+  el.innerHTML = `<div class="gem g${color}"><i></i><b></b></div>`;
+  const t = { color, el, sp: null };
+  place(t, startRow, c);
+  board.appendChild(el);
+  return t;
+}
+// Taş engel: hp vuruşta kırılır, eşleşmez, takas edilemez, yerçekimiyle düşer
+function setStone(t, hp) {
+  t.stone = hp; t.sp = null; t.color = -2;
+  t.el.className = 'tile stone hp' + hp;
+  t.el.firstChild.className = 'gem gs';
+}
+// Bölüm başında buzları ve taşları yerleştirir
+function setupObstacles() {
+  endTut(true);
+  iceEls.flat().forEach(el => el && el.remove());
+  ice = Array.from({ length: N }, () => new Array(N).fill(0));
+  iceEls = Array.from({ length: N }, () => new Array(N).fill(null));
+  iceDone = 0; stoneDone = 0;
+  if (!def) return;
+  (def.ice || []).forEach(([k, l]) => {
+    const r = Math.floor(k / N), c = k % N, el = document.createElement('div');
+    el.className = 'ice' + (l > 1 ? ' l2' : '');
+    el.style.transform = `translate(${c * 100}%,${r * 100}%)`;
+    board.insertBefore(el, fx);
+    ice[r][c] = l; iceEls[r][c] = el;
+  });
+  (def.stones || []).forEach(([k, hp]) => setStone(grid[Math.floor(k / N)][k % N], hp));
+}
+// Bir karedeki buzu bir kat kırar; tamamen kırıldıysa 1 döner
+function hitIce(r, c) {
+  if (!ice.length || ice[r][c] <= 0) return 0;
+  const el = iceEls[r][c], s = board.clientWidth / N;
+  ice[r][c]--;
+  for (let i = 0; i < 7; i++) {
+    const a = Math.random() * Math.PI * 2, v = s * (1.5 + Math.random() * 2.5);
+    parts.push({ k:'shard', x:(c + .5) * s, y:(r + .5) * s, vx:Math.cos(a) * v, vy:Math.sin(a) * v - s, life:1, decay:1.6,
+      size:s * (.08 + Math.random() * .08), rot:Math.random() * 6, vr:(Math.random() - .5) * 12, col:'#d6efff' });
+  }
+  fxStart();
+  if (ice[r][c] > 0) { el.classList.remove('l2'); el.classList.remove('crack'); void el.offsetWidth; el.classList.add('crack'); return 0; }
+  el.classList.add('gone'); setTimeout(() => el.remove(), 320); iceEls[r][c] = null;
+  iceDone++; misAdd('ice', 1);
+  return 1;
+}
+// Bir taşı özel bloğa çevirir (sp: 'h' | 'v' | 'b' | 'p')
+function setSp(t, sp, color) {
+  t.sp = sp; t.fired = false; t.target = null;
+  if (color != null) t.color = color;
+  if (sp === 'p') t.color = -1;
+  t.el.className = 'tile' + (sp ? ' sp-' + sp : '');
+  t.el.firstChild.className = 'gem ' + (sp === 'p' ? 'gp' : 'g' + t.color);
+  t.el.classList.add('forge'); setTimeout(() => t.el.classList.remove('forge'), 520);
+}
+async function dropInBoard(m) {
+  board.querySelectorAll('.tile').forEach(el => el.remove());
+  grid = m.map((row, r) => row.map((col, c) => makeTile(col, r, c, r - N - 1)));
+  board.offsetHeight;
+  grid.forEach((row, r) => row.forEach((t, c) => {
+    const d = fallDur(N) + (N - 1 - r) * 25 + c * 15;
+    place(t, r, c, d); land(t, d * .8);
+  }));
+  await wait(fallDur(N) + N * 25 + N * 15);
+}
+
+// ---------- Efektler ----------
+const fx = document.createElement('canvas');
+fx.id = 'fx'; board.appendChild(fx);
+const ctx = fx.getContext('2d');
+let parts = [], fxRunning = false, fxLast = 0;
+function sizeFx() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  fx.width = board.clientWidth * dpr; fx.height = board.clientHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', sizeFx); sizeFx();
+function burst(r, c, color, power) {
+  const s = board.clientWidth / N, x = (c + .5) * s, y = (r + .5) * s, col = color === -2 ? '#a39b92' : FXCOL[color] || '#ffffff';
+  for (let i = 0, n = 9 + power * 3; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = s * (2.2 + Math.random() * 3.5) * (1 + power * .15);
+    parts.push({ k:'shard', x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - s * 2, life:1, decay:1.3 + Math.random() * .8,
+      size:s * (.09 + Math.random() * .1), rot:Math.random() * 6, vr:(Math.random() - .5) * 14, col });
+  }
+  for (let i = 0; i < 4 + power; i++) {
+    const a = Math.random() * Math.PI * 2, v = s * (1.5 + Math.random() * 4);
+    parts.push({ k:'spark', x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, life:1, decay:2 + Math.random(), size:s * (.04 + Math.random() * .05), col:'#fff' });
+  }
+  parts.push({ k:'ring', x, y, life:1, decay:2.6, size:s * .25, grow:s * (1.2 + power * .3), col });
+  fxStart();
+}
+function fxStart() { if (!fxRunning) { fxRunning = true; fxLast = performance.now(); requestAnimationFrame(fxLoop); } }
+// Özel blok efektleri: ışın çizgisi, bomba dalgası, prizmadan hedeflere şimşek
+function specialFx(f) {
+  const s = board.clientWidth / N, x = (f.c + .5) * s, y = (f.r + .5) * s, col = FXCOL[f.color] || '#ffffff';
+  if (f.sp === 'h' || f.sp === 'v') {
+    parts.push({ k:'beam', dir:f.sp, x, y, life:1, decay:2.2, col });
+    for (let i = 0; i < 18; i++) {
+      const along = (Math.random() * 2 - 1) * s * 4, a = Math.random() * Math.PI * 2, v = s * (.6 + Math.random() * 1.6);
+      parts.push({ k:'spark', x:f.sp === 'h' ? x + along : x, y:f.sp === 'v' ? y + along : y, vx:Math.cos(a) * v, vy:Math.sin(a) * v,
+        life:1, decay:1.8 + Math.random(), size:s * (.04 + Math.random() * .05), col:'#fff' });
+    }
+  } else if (f.sp === 'b') {
+    parts.push({ k:'ring', x, y, life:1, decay:1.6, size:s * .4, grow:s * 3.2, col:'#fff' });
+    parts.push({ k:'ring', x, y, life:1, decay:2, size:s * .3, grow:s * 2.4, col });
+    flash(f.r, f.c); quake();
+  } else if (f.sp === 'p') {
+    f.area.forEach((k, i) => parts.push({ k:'zap', x, y, tx:(k % N + .5) * s, ty:(Math.floor(k / N) + .5) * s, life:1, decay:2.4,
+      seed:i * 7.3, col:FXCOL[grid[Math.floor(k / N)][k % N] ? grid[Math.floor(k / N)][k % N].color : 0] || '#fff' }));
+    parts.push({ k:'ring', x, y, life:1, decay:1.4, size:s * .3, grow:s * 4, col:'#fff' });
+    flash(f.r, f.c);
+  }
+  fxStart();
+}
+function fxLoop(now) {
+  const dt = Math.min((now - fxLast) / 1000, .05); fxLast = now;
+  const w = board.clientWidth, g = w * 2.4;
+  ctx.clearRect(0, 0, w, w);
+  parts = parts.filter(p => (p.life -= p.decay * dt) > 0);
+  for (const p of parts) {
+    ctx.globalAlpha = Math.max(p.life, 0);
+    if (p.k === 'ring') {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = p.col; ctx.lineWidth = Math.max(1, w / 120 * p.life * 2);
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size + p.grow * (1 - p.life), 0, Math.PI * 2); ctx.stroke();
+      continue;
+    }
+    if (p.k === 'beam') {
+      ctx.globalCompositeOperation = 'lighter';
+      const th = w / N * (.25 + .55 * p.life);
+      const gr = p.dir === 'h' ? ctx.createLinearGradient(0, p.y - th, 0, p.y + th) : ctx.createLinearGradient(p.x - th, 0, p.x + th, 0);
+      gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.35, p.col); gr.addColorStop(.5, '#fff');
+      gr.addColorStop(.65, p.col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gr;
+      if (p.dir === 'h') ctx.fillRect(0, p.y - th, w, th * 2); else ctx.fillRect(p.x - th, 0, th * 2, w);
+      continue;
+    }
+    if (p.k === 'zap') {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = p.col; ctx.lineWidth = Math.max(1.5, w / 160);
+      ctx.beginPath(); ctx.moveTo(p.x, p.y);
+      for (let i = 1; i <= 5; i++) {
+        const k = i / 5, j = i < 5 ? (Math.sin(p.seed + i * 2.1 + now / 40) * w / 60) : 0;
+        ctx.lineTo(p.x + (p.tx - p.x) * k + j, p.y + (p.ty - p.y) * k - j);
+      }
+      ctx.stroke();
+      continue;
+    }
+    p.vy += g * dt; p.vx *= .985; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.k === 'spark') {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life + .5, 0, Math.PI * 2); ctx.fill();
+    } else {
+      p.rot += p.vr * dt;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      const z = p.size * (.5 + p.life * .5);
+      ctx.fillStyle = p.col; ctx.fillRect(-z / 2, -z / 2, z, z);
+      ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(-z / 2, -z / 2, z, z * .3);
+      ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  if (parts.length) requestAnimationFrame(fxLoop); else { fxRunning = false; ctx.clearRect(0, 0, w, w); }
+}
+function quake() { board.classList.remove('quake'); void board.offsetWidth; board.classList.add('quake'); }
+function flash(r, c) {
+  const el = document.createElement('div');
+  el.className = 'flash';
+  el.style.setProperty('--x', ((c + .5) * 12.5) + '%'); el.style.setProperty('--y', ((r + .5) * 12.5) + '%');
+  board.appendChild(el); setTimeout(() => el.remove(), 500);
+}
+function land(t, delay) {
+  setTimeout(() => {
+    t.el.classList.remove('land'); void t.el.offsetWidth; t.el.classList.add('land');
+    setTimeout(() => t.el.classList.remove('land'), 300);
+  }, delay);
+}
+setInterval(() => {
+  if (busy || !grid.length || document.hidden) return;
+  const t = grid[rnd(N)][rnd(N)];
+  if (!t) return;
+  t.el.classList.add('shine'); setTimeout(() => t.el.classList.remove('shine'), 850);
+}, 700);
+
+// ---------- Arayüz ----------
+let shownScore = 0, scoreAnim = 0;
+function animateScore() {
+  cancelAnimationFrame(scoreAnim);
+  const from = shownScore, to = score, t0 = performance.now();
+  const step = now => {
+    const k = Math.min((now - t0) / 450, 1);
+    shownScore = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+    $('score').textContent = shownScore;
+    if (k < 1) scoreAnim = requestAnimationFrame(step);
+  };
+  scoreAnim = requestAnimationFrame(step);
+}
+function bump(id) { const el = $(id); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+const swatch = c => `<i class="sw8 g${c}"></i>`;
+function updateUI(changed) {
+  if (score < shownScore || !changed) { shownScore = score; $('score').textContent = score; } else animateScore();
+  const lv = mode === 'level';
+  $('moves').textContent = lv ? moves : '∞';
+  $('movesCard').classList.toggle('low', lv && moves <= 5);
+  if (lv) {
+    $('midLbl').textContent = T.level; $('mid').textContent = level;
+    $('bar').style.width = Math.min(progress() / goalNeed(def) * 100, 100) + '%';
+    $('goal').innerHTML = goalHtml(def, progress());
+  } else {
+    if (score > save.best) { save.best = score; persist(); }
+    if (score > 0) misAdd('endless', score, true);
+    $('midLbl').textContent = T.best; $('mid').textContent = save.best;
+  }
+  if (changed) changed.forEach(bump);
+}
+function floatText(txt, r, c) {
+  const el = document.createElement('div');
+  el.className = 'float'; el.textContent = txt;
+  el.style.left = ((c + .5) * 12.5) + '%'; el.style.top = ((r + .5) * 12.5) + '%';
+  board.appendChild(el); setTimeout(() => el.remove(), 950);
+}
+function banner(html) {
+  board.querySelectorAll('.banner').forEach(el => el.remove());
+  const el = document.createElement('div');
+  el.className = 'banner'; el.innerHTML = html;
+  board.appendChild(el); setTimeout(() => el.remove(), 1150);
+}
+function toast(msg, ms) {
+  const el = $('toast'); el.textContent = msg;
+  el.classList.add('show'); clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.remove('show'), ms || 2200);
+}
+function setFoot() {
+  const f = $('foot');
+  f.textContent = aiming ? T.tapTile : T.help;
+  f.classList.toggle('aim', !!aiming);
+}
+
+// ---------- Ses ----------
+let ac = null;
+function initAudio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (ac && ac.state === 'suspended') ac.resume();
+  loadSfx();
+  startMusic();
+}
+function buzz(p) {
+  if (!settings.vibe || !navigator.vibrate) return;
+  try { navigator.vibrate(p); } catch (e) {}
+}
+function tone(f1, f2, dur, vol, type) {
+  if (!ac || sliderGain(settings.sfxVol) <= 0) return;
+  buildMix();
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur * .7);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(g).connect(mix.sfx); o.start(t); o.stop(t + dur + .02);
+}
+// ---------- Gerçek ses efektleri ----------
+// Kayıtlar: Kenney.nl (Casino Audio, Interface Sounds, Impact Sounds, RPG Audio, Music Jingles)
+// Lisans: CC0 / kamu malı - ticari kullanım serbest (sounds/LICENSE-Kenney-CC0.txt)
+const SFX = {
+  swap:   ['chips-collide-1', 'chips-collide-2', 'chips-collide-3', 'chips-collide-4'],   // taşlar birbirine çarpar
+  pop:    ['glass_001', 'glass_002', 'glass_003', 'glass_004', 'glass_005', 'glass_006'], // cam şıngırtısı
+  popBig: ['impactGlass_medium_000', 'impactGlass_medium_001', 'impactGlass_medium_002', 'impactGlass_medium_003', 'impactGlass_medium_004'],
+  smash:  ['impactGlass_heavy_000', 'impactGlass_heavy_001', 'impactGlass_heavy_002', 'impactGlass_heavy_003', 'impactGlass_heavy_004'],
+  land:   ['chip-lay-1', 'chip-lay-2', 'chip-lay-3'],
+  bad:    ['impactWood_light_002'],
+  coin:   ['handleCoins', 'handleCoins2'],
+  shuffle:['card-shuffle'],
+  stack:  ['chips-stack-6'],
+  click:  ['click_001'],
+  win:    ['jingles_STEEL02'],   // yükselen melodi
+  fail:   ['jingles_PIZZI01'],   // alçalan melodi
+  gift:   ['jingles_PIZZI02']
+};
+// Ses yüksekliği dengeleme (audio-design skill'i): her dosya ITU-R BS.1770 ile ölçüldü (en yüksek 400 ms),
+// mobil hedefe göre olay türüne göre hedeflendi: cam kırılması -16, patlama/para -19, değiştirme -21,
+// karıştırma -22, düşme -27, tık -26, melodiler -16 LUFS. Değer = o dosyaya uygulanan çarpan.
+const SFX_GAIN = {"chips-collide-1": 1.549, "chips-collide-2": 1.738, "chips-collide-3": 1.641, "chips-collide-4": 2.512, "glass_001": 1.109, "glass_002": 1.445, "glass_003": 1.096, "glass_004": 0.462, "glass_005": 1.585, "glass_006": 1.622, "impactGlass_medium_000": 1.23, "impactGlass_medium_001": 1.175, "impactGlass_medium_002": 1.259, "impactGlass_medium_003": 1.216, "impactGlass_medium_004": 1.084, "impactGlass_heavy_000": 2.163, "impactGlass_heavy_001": 2.239, "impactGlass_heavy_002": 2.317, "impactGlass_heavy_003": 1.82, "impactGlass_heavy_004": 2.042, "chip-lay-1": 0.603, "chip-lay-2": 1.084, "chip-lay-3": 0.794, "impactWood_light_002": 1.047, "handleCoins": 1.047, "handleCoins2": 2.512, "card-shuffle": 1.334, "chips-stack-6": 1.202, "click_001": 1.972, "jingles_STEEL02": 0.495, "jingles_PIZZI01": 0.537, "jingles_PIZZI02": 0.513};
+
+// Ses grupları:  Müzik -> MüzikKısma ─┐
+//                Efekt ───────────────┼─> Ana -> Sınırlayıcı (-1 dB tavan) -> hoparlör
+//                Arayüz ──────────────┘
+const mix = { master: null, music: null, duck: null, sfx: null, ui: null };
+const sliderGain = v => { v = Math.max(0, Math.min(1, +v || 0)); return v * v; };   // kaydırıcının karesi: kulakta düzgün değişim
+function buildMix() {
+  if (mix.master || !ac) return;
+  const lim = ac.createDynamicsCompressor();          // güvenlik sınırlayıcısı: üst üste binen sesler cızırdamasın
+  lim.threshold.value = -6; lim.knee.value = 4; lim.ratio.value = 20; lim.attack.value = .002; lim.release.value = .12;
+  const ceil = ac.createGain(); ceil.gain.value = .89;  // ~ -1 dB tepe payı
+  lim.connect(ceil); ceil.connect(ac.destination);
+  mix.master = ac.createGain(); mix.master.gain.value = .9; mix.master.connect(lim);
+  mix.duck = ac.createGain(); mix.duck.connect(mix.master);
+  mix.music = ac.createGain(); mix.music.connect(mix.duck);
+  mix.sfx = ac.createGain(); mix.sfx.connect(mix.master);
+  mix.ui = ac.createGain(); mix.ui.connect(mix.master);
+  applyVolumes(true);
+}
+function applyVolumes(now) {
+  if (!mix.master) return;
+  const t = ac.currentTime, k = now ? .001 : .05;
+  mix.music.gain.setTargetAtTime(sliderGain(settings.musicVol), t, k);
+  mix.sfx.gain.setTargetAtTime(sliderGain(settings.sfxVol), t, k);
+  mix.ui.gain.setTargetAtTime(sliderGain(settings.sfxVol) * .9, t, k);
+}
+// Önemli anlarda müziği kısa süre ~12 dB kıs; oyuncunun müzik ayarına dokunmaz (ayrı kısma grubu)
+function duckMusic(sec) {
+  if (!mix.duck) return;
+  const g = mix.duck.gain, t = ac.currentTime;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+  g.setTargetAtTime(.25, t, .03);
+  g.setTargetAtTime(1, t + sec, .4);
+}
+const sfxBuf = {};
+let sfxLoading = null, lastPick = {};
+function loadSfx() {
+  if (sfxLoading || !ac) return sfxLoading;
+  sfxLoading = Promise.all([...new Set(Object.values(SFX).flat())].map(async n => {
+    try { const r = await fetch('sounds/' + n + '.ogg'); sfxBuf[n] = await ac.decodeAudioData(await r.arrayBuffer()); } catch (e) {}
+  }));
+  return sfxLoading;
+}
+function play(kind, o) {
+  o = o || {};
+  if (!ac || sliderGain(settings.sfxVol) <= 0) return;
+  buildMix();
+  const list = SFX[kind]; if (!list) return;
+  // aynı ses arka arkaya gelmesin (makineli tüfek etkisi olmasın)
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === lastPick[kind]) i = (i + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length;
+  lastPick[kind] = i;
+  const name = list[i], b = sfxBuf[name];
+  if (!b) return;
+  const src = ac.createBufferSource(), g = ac.createGain();
+  src.buffer = b;
+  // küçük perde (±~0,6 yarım ton) ve ses (±~1,5 dB) farkı: her seferinde doğal duyulur
+  src.playbackRate.value = (o.rate || 1) * (o.exact ? 1 : .965 + Math.random() * .07);
+  const vary = o.exact ? 1 : .84 + Math.random() * .32;
+  g.gain.value = (SFX_GAIN[name] || 1) * (o.vol == null ? 1 : o.vol) * vary;
+  src.connect(g); g.connect(kind === 'click' ? mix.ui : mix.sfx);
+  src.start(ac.currentTime + (o.delay || 0));
+}
+const sPop = combo => { play('pop', { rate: 1 + Math.min(combo - 1, 6) * .07 }); if (combo >= 3) play('popBig', { vol: .6 }); };
+const sSwap = () => play('swap');
+const sBad = () => play('bad');
+const sCoin = () => play('coin');
+const sBoom = () => { play('smash'); play('stack', { delay: .08 }); duckMusic(.5); };
+
+// ---------- Fon müziği (kodla üretilir; ses dosyası yok, telif sorunu yok) ----------
+const music = { on:false, timer:0, next:0, step:0, out:null, bus:null };
+const STEP = 60 / 84 / 2;
+const CHORDS = [[57,60,64],[53,57,60],[48,52,55],[55,59,62]];
+const ARP = [0,1,2,1, 0,2,1,2, 0,1,2,1, 2,1,0,1];
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function buildMusicBus() {
+  buildMix(); music.out = ac.createGain(); music.out.gain.value = 0; music.out.connect(mix.music);
+  music.bus = ac.createGain();
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+  const dl = ac.createDelay(1); dl.delayTime.value = STEP * 3;
+  const fb = ac.createGain(); fb.gain.value = .32;
+  const wet = ac.createGain(); wet.gain.value = .45;
+  music.bus.connect(lp); lp.connect(music.out); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(music.out);
+}
+function mNote(f, t, dur, vol, type, att) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + att);
+  g.gain.exponentialRampToValueAtTime(.0005, t + dur);
+  o.connect(g); g.connect(music.bus); o.start(t); o.stop(t + dur + .05);
+}
+function scheduleMusic() {
+  while (music.next < ac.currentTime + .3) {
+    const t = music.next, pos = music.step % 16, ch = CHORDS[Math.floor(music.step / 16) % 4];
+    if (pos === 0) {
+      ch.forEach(m => { mNote(mtof(m), t, STEP * 16, .03, 'triangle', .8); mNote(mtof(m) * 1.004, t, STEP * 16, .018, 'sine', .8); });
+      mNote(mtof(ch[0] - 12), t, STEP * 7, .08, 'sine', .03);
+    }
+    if (pos === 8) mNote(mtof(ch[0] - 12), t, STEP * 7, .06, 'sine', .03);
+    if (pos % 2 === 0 || Math.random() < .3) {
+      const m = ch[ARP[pos]] + 12 + (pos === 14 ? 12 : 0);
+      mNote(mtof(m), t, STEP * 3, .045, 'sine', .006);
+      mNote(mtof(m) * 2, t, STEP * 1.5, .012, 'triangle', .006);
+    }
+    music.next += STEP; music.step++;
+  }
+}
+function startMusic() {
+  if (!ac || music.on || sliderGain(settings.musicVol) <= 0 || document.hidden) return;
+  if (!music.out) buildMusicBus();
+  music.on = true; music.next = ac.currentTime + .1;
+  music.out.gain.cancelScheduledValues(ac.currentTime);
+  music.out.gain.setTargetAtTime(.45, ac.currentTime, .9);
+  scheduleMusic(); music.timer = setInterval(scheduleMusic, 60);
+}
+function stopMusic() {
+  if (!music.on) return;
+  music.on = false; clearInterval(music.timer);
+  music.out.gain.cancelScheduledValues(ac.currentTime);
+  music.out.gain.setTargetAtTime(0, ac.currentTime, .12);
+}
+document.addEventListener('visibilitychange', () => {
+  if (!ac) return;
+  if (document.hidden) { stopMusic(); ac.suspend(); }
+  else { ac.resume(); startMusic(); }
+});
+
+// ---------- Canlar & altın ----------
+function tickLives() {
+  const now = Date.now();
+  if (save.lives >= MAX_LIVES) { save.lifeTs = now; return; }
+  let changed = false;
+  while (save.lives < MAX_LIVES && now - save.lifeTs >= LIFE_MS) { save.lives++; save.lifeTs += LIFE_MS; changed = true; }
+  if (save.lives >= MAX_LIVES) save.lifeTs = now;
+  if (changed) persist();
+}
+function loseLife() {
+  tickLives();
+  if (save.lives >= MAX_LIVES) save.lifeTs = Date.now();
+  save.lives = Math.max(0, save.lives - 1); persist(); renderPills();
+}
+function lifeTimerText() {
+  if (save.lives >= MAX_LIVES) return T.full;
+  const ms = Math.max(0, LIFE_MS - (Date.now() - save.lifeTs)), s = Math.ceil(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+function renderPills() {
+  document.querySelectorAll('.coinsVal').forEach(e => e.textContent = save.coins);
+  document.querySelectorAll('.livesVal').forEach(e => e.textContent = save.lives);
+  document.querySelectorAll('.lifeTimer').forEach(e => e.textContent = lifeTimerText());
+  if ($('livesDlg').classList.contains('show')) renderLives();
+}
+setInterval(() => { tickLives(); renderPills(); }, 1000);
+
+// ---------- Özel güçler ----------
+function renderBoosts() {
+  document.querySelectorAll('.boost[data-b]').forEach(b => {
+    const k = b.dataset.b, n = save.inv[k] || 0, cnt = b.querySelector('.cnt');
+    cnt.textContent = n > 0 ? n : '+';
+    cnt.classList.toggle('plus', n <= 0);
+    b.disabled = k === 'plus5' && mode !== 'level';
+    b.classList.toggle('on', aiming === k);
+  });
+}
+function setAim(k) {
+  aiming = k; clearSel();
+  board.classList.toggle('aiming', !!k);
+  renderBoosts(); setFoot();
+  if (k) stopHint(); else armHint();
+}
+async function onBoost(k) {
+  if (busy || locked()) return;
+  initAudio();
+  if ((save.inv[k] || 0) <= 0) { setAim(null); openShop(); return; }
+  if (k === 'hammer') { setAim(aiming === 'hammer' ? null : 'hammer'); return; }
+  setAim(null);
+  if (k === 'plus5') {
+    if (mode !== 'level') return;
+    save.inv.plus5--; persist(); moves += 5;
+    banner('+5'); sCoin(); updateUI(['moves']); renderBoosts();
+    return;
+  }
+  if (k === 'clear') {
+    busy = true; stopHint();
+    save.inv.clear--; persist(); renderBoosts();
+    const all = new Set(); for (let i = 0; i < N * N; i++) all.add(i);
+    banner(ico('blast')); sBoom(); buzz([40, 30, 80]); quake(); flash(3.5, 3.5);
+    await popCells(all, { power: 0, wave: true, noBanner: true });
+    await resolve(2);
+    await afterTurn();
+  }
+}
+async function useHammer(r, c) {
+  busy = true; setAim(null); stopHint();
+  save.inv.hammer--; persist(); renderBoosts();
+  flash(r, c); quake(); sBoom(); buzz(40);
+  await popCells(new Set([r * N + c]), { power: 2, noBanner: true, smash: true });
+  await resolve(2);
+  await afterTurn();
+}
+
+// ---------- Oyun akışı ----------
+async function trySwap(r1, c1, r2, c2) {
+  if (busy || locked()) return;
+  busy = true; clearSel(); stopHint(); initAudio();
+  const A = grid[r1][c1], B = grid[r2][c2];
+  if (A.stone || B.stone) {                                       // taş yerinden oynamaz
+    [A, B].filter(t => t.stone).forEach(t => { t.el.classList.remove('hit'); void t.el.offsetWidth; t.el.classList.add('hit'); });
+    sBad(); busy = false; armHint();
+    return;
+  }
+  grid[r1][c1] = B; grid[r2][c2] = A;
+  place(A, r2, c2, 180); place(B, r1, c1, 180); sSwap();
+  await wait(190);
+  if (A.sp === 'p' || B.sp === 'p' || (A.sp && B.sp)) {          // özel blok takası: her zaman geçerli
+    if (mode === 'level') { moves--; updateUI(['moves']); }
+    await specialSwap(A, B, r2, c2, r1, c1);
+    await resolve(2);
+    await afterTurn();
+    return;
+  }
+  if (findMatches(colors()).set.size === 0) {
+    grid[r1][c1] = A; grid[r2][c2] = B;
+    place(A, r1, c1, 180); place(B, r2, c2, 180); sBad();
+    await wait(190);
+    [A, B].forEach(t => { t.el.classList.add('shake'); setTimeout(() => t.el.classList.remove('shake'), 320); });
+    busy = false; armHint();
+    return;
+  }
+  if (mode === 'level') { moves--; updateUI(['moves']); }
+  endTut();
+  await resolve(1, [r1 * N + c1, r2 * N + c2]);
+  await afterTurn();
+}
+// İki özel blok ya da prizma takası. A, (r,c) karesine gelen taş; B onun eski yerinde.
+async function specialSwap(A, B, r, c, br, bc) {
+  const all = new Set(), add = arr => arr.forEach(k => all.add(k));
+  misAdd('combo', 1);
+  const P = A.sp === 'p' ? A : B.sp === 'p' ? B : null, X = P === A ? B : A;
+  const ka = r * N + c, kB = br * N + bc;
+  if (P && X.sp === 'p') {                                         // prizma + prizma: bütün tahta
+    banner(T.spMega); sBoom(); play('smash', { delay: .1 }); buzz([50, 30, 90]);
+    for (let i = 0; i < N * N; i++) all.add(i);
+    A.fired = B.fired = true;
+    specialFx({ r, c, sp: 'b', color: -1, area: [] }); specialFx({ r: br, c: bc, sp: 'b', color: -1, area: [] });
+    await popCells(all, { power: 3, wave: true, noBanner: true, bonus: 500 });
+    return;
+  }
+  if (P && X.sp) {                                                 // prizma + ışın/bomba: o rengin hepsi özel bloğa döner
+    banner(T.spMega); play('popBig'); buzz([30, 30, 60]);
+    const col = X.color, targets = [];
+    grid.forEach((row, rr) => row.forEach((t, cc) => { if (t && !t.sp && t.color === col) targets.push([t, rr, cc]); }));
+    specialFx({ r: P === A ? r : br, c: P === A ? c : bc, sp: 'p', color: col, area: targets.map(([, rr, cc]) => rr * N + cc) });
+    targets.forEach(([t], i) => setTimeout(() => setSp(t, X.sp === 'b' ? 'b' : (i % 2 ? 'h' : 'v')), 40 * i));
+    await wait(40 * targets.length + 450);
+    P.fired = true;
+    add([ka, kB]); targets.forEach(([, rr, cc]) => all.add(rr * N + cc));
+    await popCells(all, { power: 3, noBanner: true, bonus: 200 });
+    return;
+  }
+  if (P) {                                                         // prizma + normal taş: o rengin hepsi
+    P.target = X.color;
+    play('popBig'); buzz([30, 20, 50]);
+    add([ka, kB]);
+    await popCells(all, { power: 2, noBanner: true, bonus: 100 });
+    return;
+  }
+  // iki özel blok (ışın/bomba) birbirine
+  A.fired = B.fired = true;
+  const lines = s => s === 'h' || s === 'v';
+  let area = [], fx = [];
+  if (lines(A.sp) && lines(B.sp)) {                                // ışın + ışın: artı şeklinde
+    area = [...areaOf('h', r, c), ...areaOf('v', r, c)];
+    fx = [{ r, c, sp: 'h', color: A.color }, { r, c, sp: 'v', color: B.color }];
+  } else if (A.sp === 'b' && B.sp === 'b') {                       // bomba + bomba: 5x5
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      const rr = r + dr, cc = c + dc;
+      if (rr >= 0 && rr < N && cc >= 0 && cc < N) area.push(rr * N + cc);
+    }
+    fx = [{ r, c, sp: 'b', color: A.color }, { r: br, c: bc, sp: 'b', color: B.color }];
+  } else {                                                         // ışın + bomba: 3 satır + 3 sütun
+    for (let d = -1; d <= 1; d++) {
+      if (r + d >= 0 && r + d < N) { area.push(...areaOf('h', r + d, c)); fx.push({ r: r + d, c, sp: 'h', color: A.color }); }
+      if (c + d >= 0 && c + d < N) { area.push(...areaOf('v', r, c + d)); fx.push({ r, c: c + d, sp: 'v', color: B.color }); }
+    }
+  }
+  banner(T.spMega); sBoom(); buzz([40, 30, 80]);
+  fx.forEach(f => specialFx(f));
+  add(area); add([ka, kB]);
+  await popCells(all, { power: 3, noBanner: true, bonus: 150, origin: [r, c] });
+}
+
+// İlk açılış öğreticisi: 1. bölümde geçerli bir hamleyi parmak hareketiyle gösterir, ilk hamlede kapanır
+function showTut() {
+  endTut(true);
+  const mv = findMove(colors()); if (!mv) return;
+  const [[r0, c0], [r1, c1]] = mv, el = document.createElement('div');
+  el.id = 'tut';
+  el.innerHTML = `<div class="tutTip${r0 < 4 ? ' low' : ''}">${T.tut1}</div><div class="finger" style="--x0:${c0 * 100}%;--y0:${r0 * 100}%;--x1:${c1 * 100}%;--y1:${r1 * 100}%"></div>`;
+  board.appendChild(el);
+  [[r0, c0], [r1, c1]].forEach(([r, c]) => grid[r][c].el.classList.add('hint'));
+}
+function endTut(silent) {
+  const el = $('tut'); if (!el) return;
+  el.remove();
+  if (silent) return;
+  save.tut = 1; persist();
+  setTimeout(() => toast(T.tut2, 4200), 900);
+}
+// Bir özel blok ilk kez doğduğunda ne işe yaradığını kısaca anlatır (her tür için bir kez)
+function spIntro(sp) {
+  const key = sp === 'v' ? 'h' : sp;
+  save.seenSp = save.seenSp || {};
+  if (save.seenSp[key]) return;
+  save.seenSp[key] = 1; persist();
+  setTimeout(() => toast(T['sp_' + key], 3800), 500);
+}
+// Verilen taşları patlatır, puan/görev sayar, sonra yerçekimi ile yenilerini düşürür
+async function popCells(set, o) {
+  const combo = o.combo || 1, keep = o.keep || new Map();
+  const fired = expand(set, keep);                       // kümedeki özel bloklar zincirleme patlar
+  const power = Math.min((o.power || 0) + (fired.length ? 1 : 0), 4);
+  fired.forEach(f => specialFx(f));
+  if (fired.some(f => f.sp === 'b' || f.sp === 'p')) { sBoom(); buzz([40, 30, 70]); }
+  else if (fired.length) { play('popBig'); play('smash', { vol: .5, delay: .05 }); }
+  // yeni özel bloklar: taş yerinde kalır, dönüşür
+  keep.forEach((p, k) => {
+    const t = grid[Math.floor(k / N)][k % N];
+    if (!t) return;
+    if (p.sp === 'p' && def && def.type === 'collect' && t.color === def.color) collected++;
+    setSp(t, p.sp, p.color); spIntro(p.sp);
+  });
+  if (keep.size) { tone(660, 1320, .25, .09, 'triangle'); misAdd('special', keep.size); }
+  // taşlar doğrudan patlamaz: kümedeki ya da patlayan bir taşın yanındaki taş bir vuruş alır
+  const tAt = k => grid[Math.floor(k / N)][k % N];
+  const hit = new Set();
+  set.forEach(k => { const t = tAt(k); if (t && t.stone) hit.add(k); });
+  hit.forEach(k => set.delete(k));
+  [...set, ...keep.keys()].forEach(k => {
+    const r = Math.floor(k / N), c = k % N;
+    [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].forEach(([rr, cc]) => {
+      if (rr >= 0 && rr < N && cc >= 0 && cc < N && grid[rr][cc] && grid[rr][cc].stone) hit.add(rr * N + cc);
+    });
+  });
+  let stoneHits = 0;
+  hit.forEach(k => {
+    const t = tAt(k);
+    t.stone = o.smash ? 0 : t.stone - 1; stoneHits++;
+    if (t.stone <= 0) { set.add(k); stoneDone++; misAdd('stone', 1); return; }
+    t.el.className = 'tile stone hp' + t.stone + ' hit';
+    burst(Math.floor(k / N), k % N, -2, 0);
+  });
+  if (hit.size) play('bad', { vol: .8 });
+  keep.forEach((p, k) => hitIce(Math.floor(k / N), k % N));
+  const pts = (set.size * 10 + (o.bonus || 0) + fired.length * 50 + stoneHits * 20) * combo;
+  score += pts;
+  if (!set.size) { updateUI(['score']); await wait(250); return; }
+  misAdd('pop', set.size);
+  let sr = 0, sc = 0;
+  set.forEach(k => { sr += Math.floor(k / N); sc += k % N; });
+  const cr = sr / set.size, cc = sc / set.size;
+  floatText('+' + pts, cr, cc);
+  if (!o.noBanner) {
+    if (combo > 1) banner(`${T.combo} x${combo}!`);
+    else if (o.maxRun >= 5) banner(T.amazing);
+    else if (o.maxRun === 4) banner(T.great);
+    if (power >= 1) flash(cr, cc);
+    if (power >= 2 || set.size >= 6) quake();
+  }
+  let maxDelay = 0;
+  set.forEach(k => {
+    const r = Math.floor(k / N), c = k % N, t = grid[r][c];
+    if (!t) return;
+    if (def && def.type === 'collect' && t.color === def.color) collected++;
+    hitIce(r, c);
+    grid[r][c] = null;
+    let delay = o.wave ? (Math.abs(r - 3.5) + Math.abs(c - 3.5)) * 40 : 0;
+    if (!o.wave && fired.length)                          // patlama, tetiklenen bloktan dışa doğru yayılır
+      delay = Math.min(...fired.map(f => Math.max(Math.abs(r - f.r), Math.abs(c - f.c)))) * 35;
+    maxDelay = Math.max(maxDelay, delay);
+    setTimeout(() => t.el.classList.add('pop'), delay);
+    setTimeout(() => burst(r, c, t.color, power), delay + 90);
+    setTimeout(() => t.el.remove(), delay + 300);
+  });
+  sPop(combo);
+  buzz(power >= 2 ? 35 : 12);
+  updateUI(['score']);
+  await wait(270 + maxDelay);
+
+  let maxD = 0; const fresh = [];
+  for (let c = 0; c < N; c++) {
+    let w = N - 1;
+    for (let r = N - 1; r >= 0; r--) {
+      const t = grid[r][c];
+      if (!t) continue;
+      if (r !== w) { grid[w][c] = t; grid[r][c] = null; place(t, w, c, fallDur(w - r)); land(t, fallDur(w - r) * .8); maxD = Math.max(maxD, w - r); }
+      w--;
+    }
+    const cnt = w + 1;
+    for (let r = 0; r <= w; r++) {
+      const t = makeTile(rnd(numColors), r, c, r - cnt);
+      grid[r][c] = t; fresh.push([t, r, c, cnt]); maxD = Math.max(maxD, cnt);
+    }
+  }
+  board.offsetHeight;
+  fresh.forEach(([t, r, c, d]) => { place(t, r, c, fallDur(d)); land(t, fallDur(d) * .8); });
+  play('land', { delay: fallDur(maxD) * .75 / 1000 });
+  await wait(fallDur(maxD) + 40);
+}
+async function resolve(startCombo, prefer) {
+  let combo = startCombo || 1;
+  for (;;) {
+    const m = findMatches(colors());
+    if (!m.set.size) break;
+    const keep = new Map();
+    for (const p of planSpecials(m.runs, prefer)) {
+      let k = p.k;
+      const at = x => grid[Math.floor(x / N)][x % N];
+      if (at(k).sp || keep.has(k)) k = p.cells.find(x => !at(x).sp && !keep.has(x));   // var olan özel blok patlasın
+      if (k == null) continue;
+      keep.set(k, p); m.set.delete(k);
+    }
+    prefer = null;
+    const power = Math.min((m.maxRun - 3) + (combo - 1), 4);
+    await popCells(m.set, { combo, bonus: m.bonus, maxRun: m.maxRun, power, keep });
+    combo++;
+  }
+}
+async function afterTurn() {
+  if (mode === 'level' && goalDone()) { finished = true; busy = false; levelWin(); return; }
+  if (mode === 'level' && moves <= 0) { finished = true; busy = false; levelFail(); return; }
+  if (!anyMove()) await reshuffle();
+  busy = false; armHint();
+}
+async function reshuffle() {
+  banner(T.shuffle);
+  play('shuffle');
+  await wait(750);
+  const m = genColors(), step = 35;
+  play('stack', { delay: .2 });
+  grid.forEach((row, r) => row.forEach((t, c) => {
+    if (t.sp === 'p' || t.stone) return;                         // prizma ve taş yerinde kalır
+    setTimeout(() => {
+      t.el.classList.remove('flip'); void t.el.offsetWidth; t.el.classList.add('flip');
+      setTimeout(() => { t.color = m[r][c]; t.el.firstChild.className = 'gem g' + m[r][c]; }, 170);
+      setTimeout(() => t.el.classList.remove('flip'), 360);
+    }, (r + c) * step);
+  }));
+  await wait((2 * N - 2) * step + 400);
+}
+
+// ---------- Seçim & ipucu ----------
+function clearSel() { if (sel) { sel.t.el.classList.remove('sel'); sel = null; } }
+function setSel(r, c) { clearSel(); sel = { r, c, t: grid[r][c] }; sel.t.el.classList.add('sel'); }
+function stopHint() { clearTimeout(hintTimer); board.querySelectorAll('.hint').forEach(el => el.classList.remove('hint')); }
+function armHint() {
+  stopHint();
+  if (!grid.length || finished || aiming) return;
+  hintTimer = setTimeout(() => {
+    if (busy || finished || aiming) return;
+    const mv = anyMove();
+    if (mv) mv.forEach(([r, c]) => grid[r][c].el.classList.add('hint'));
+  }, 6000);
+}
+
+// ---------- Pencereler ----------
+let dlg = {};
+function showDialog(o) {
+  stopHint();
+  dlg = o;
+  $('dlgTitle').textContent = o.title;
+  if (o.bigHtml != null) $('finalScore').innerHTML = o.bigHtml; else $('finalScore').textContent = o.big;
+  $('dlgGhost').classList.toggle('hide', !o.ghost);
+  $('rec').innerHTML = o.sub || '';
+  $('dlgMain').innerHTML = o.main;
+  $('dlgGhost').textContent = o.ghost;
+  $('dlgAlt').classList.toggle('hide', !o.alt);
+  if (o.alt) $('dlgAlt').innerHTML = o.alt;
+  $('dlgAd').classList.toggle('hide', !o.ad);
+  if (o.ad) $('dlgAd').innerHTML = o.ad;
+  const show = () => { if (dlg !== o) return; $('over').classList.add('show'); if (o.board) Ads.showBoard(); };
+  if (o.instant) show(); else setTimeout(show, 450);
+}
+function hideDialog() { $('over').classList.remove('show'); Ads.hideBoard(); }
+function starsHtml(n) { return `<div class="stars">${'★'.repeat(n)}<em>${'★'.repeat(3 - n)}</em></div>`; }
+
+function levelWin() {
+  const left = moves / def.moves;
+  const stars = left >= .3 ? 3 : left >= .1 ? 2 : 1;
+  misAdd('stars', stars); misAdd('win', 1);
+  save.stars[level] = Math.max(save.stars[level] || 0, stars);
+  save.unlocked = Math.min(MAX_LEVEL, Math.max(save.unlocked, level + 1));
+  const won = 10 + stars * 10;
+  save.coins += won;
+  let giftHtml = '';
+  if (def.gift && !save.gifts[level]) {
+    save.gifts[level] = 1; save.inv[def.gift]++;
+    giftHtml = `<div class="giftline">${ico('gift')} ${T.gift}: ${boostIco(def.gift)} ${T[def.gift]} +1</div>`;
+  }
+  save.lives = Math.min(MAX_LIVES, save.lives + 1);       // bölüm kazanılınca harcanan can geri gelir
+  if (save.lives >= MAX_LIVES) save.lifeTs = Date.now();
+  giftHtml += `<div class="giftline">${ico('heart')} +1 ${T.refund}</div>`;
+  persist(); renderPills(); renderBoosts();
+  setTimeout(confetti, 300);
+  play('win', { exact: true }); duckMusic(1.5); setTimeout(sCoin, 1100);
+  buzz([30, 60, 30, 60, 60]);
+  banner(T.win);
+  showDialog({
+    title: `${T.level} ${level}`, big: score,
+    sub: starsHtml(stars) + `<div class="earn">+${won} <i class="coin"></i></div>` + giftHtml,
+    board: true,
+    main: T.next, onMain: async () => { hideDialog(); await Ads.levelEnd(); if (level >= MAX_LEVEL) showMap(); else startLevel(level + 1); },
+    ghost: T.map, onGhost: async () => { hideDialog(); await Ads.levelEnd(); showMap(); }
+  });
+}
+function levelFail() {
+  play('fail', { exact: true }); duckMusic(1.1);
+  const free = save.inv.plus5 > 0;
+  const goalTxt = goalHtml(def, progress());
+  showDialog({
+    title: T.fail, big: score, sub: `<div>${goalTxt}</div>`,
+    ad: adContinueUsed ? null : `${ico('play')} ${T.adMoves}`,
+    onAd: async () => {
+      const ok = await Ads.rewarded(); if (!ok) return;
+      adContinueUsed = true; hideDialog();
+      finished = false; moves += 5; updateUI(['moves']); banner('+5'); sCoin(); armHint();
+    },
+    alt: free ? `${T.cont} <small>(${T.have} ${save.inv.plus5})</small>` : `${T.cont} · 150 <i class="coin"></i>`,
+    onAlt: () => {
+      if (save.inv.plus5 > 0) save.inv.plus5--;
+      else if (save.coins >= 150) save.coins -= 150;
+      else { toast(T.noCoins); openShop(); return; }
+      persist(); renderPills(); renderBoosts(); hideDialog();
+      finished = false; moves += 5; updateUI(['moves']); banner('+5'); sCoin(); armHint();
+    },
+    board: true,
+    main: `${T.retry} <small>(−1 ${ico('heart')})</small>`, onMain: async () => {
+      hideDialog(); await Ads.levelEnd(); startLevel(level);
+    },
+    ghost: T.map, onGhost: async () => { hideDialog(); await Ads.levelEnd(); showMap(); }
+  });
+}
+
+async function newGame() {
+  if (busy) return;
+  busy = true; finished = false; aiming = null;
+  board.classList.remove('aiming');
+  hideDialog(); clearSel(); stopHint();
+  score = 0; collected = 0; adContinueUsed = false;
+  if (mode === 'endless' && !endlessStart) endlessStart = Date.now();
+  if (mode === 'level') { def = levelDef(level); moves = def.moves; } else { def = null; moves = 0; }
+  numColors = colorsFor(mode, level);
+  document.body.classList.toggle('endless', mode === 'endless');
+  updateUI(); renderBoosts(); setFoot();
+  await dropInBoard(genColors());
+  setupObstacles();
+  if (!anyMove()) await reshuffle();
+  busy = false;
+  if (mode === 'level' && level === 1 && !save.tut) showTut();
+  if (def && (def.type === 'ice' || def.type === 'stone')) spIntro(def.type);   // engel ilk kez görülünce açıklama
+  if (mode === 'level') banner(goalHtml(def));
+  armHint();
+}
+function hideScreens() { ['menu', 'map'].forEach(id => $(id).classList.remove('show')); hideDialog(); }
+function startLevel(n) {
+  tickLives();
+  if (save.lives <= 0) { showMap(); openLives(); return; }
+  initAudio();
+  loseLife();                       // her oyun 1 can; kazanınca geri verilir
+  mode = 'level'; level = n;
+  hideScreens(); newGame();
+}
+function previewLevel(n) {
+  const d = levelDef(n), st = save.stars[n] || 0;
+  const goal = goalHtml(d);
+  showDialog({
+    instant: true, title: `${T.level} ${n}`, bigHtml: `<div class="goalbig">${goal}</div>`,
+    sub: (st ? starsHtml(st) : '') + `<div>${T.moves}: ${d.moves}</div>` +
+      (d.gift && !save.gifts[n] ? `<div class="giftline">${ico('gift')} ${T.gift}: ${boostIco(d.gift)} ${T[d.gift]}</div>` : ''),
+    main: `${T.play} <small>(−1 ${ico('heart')})</small>`, onMain: () => { hideDialog(); startLevel(n); },
+    ghost: T.close, onGhost: hideDialog
+  });
+}
+function endlessOver() {
+  finished = true; stopHint();
+  const rec = score > 0 && score >= save.best;
+  showDialog({
+    instant: true, board: true, title: T.gameOver, big: score,
+    sub: `<div>${T.bestIs}: ${save.best}</div>` + (rec ? `<div class="giftline">${T.rec}</div>` : ''),
+    main: T.again, onMain: async () => { hideDialog(); await Ads.endlessCheck(); newGame(); },
+    ghost: T.menu, onGhost: () => { hideDialog(); showMenu(); }
+  });
+  if (rec) setTimeout(confetti, 200);
+}
+
+// ---------- Can penceresi ----------
+function fmtTime(ms) {
+  const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0');
+}
+function lifeAdsLeft() {
+  const d = new Date().toDateString();
+  if (save.lifeAdDay !== d) { save.lifeAdDay = d; save.lifeAdCount = 0; }
+  return Math.max(0, CONFIG.lifeAdsPerDay - (save.lifeAdCount || 0));
+}
+function renderLives() {
+  $('heartsRow').innerHTML = Array.from({ length: MAX_LIVES }, (_, i) =>
+    `<span class="ico${i < save.lives ? '' : ' off'}">${ICON.heart}</span>`).join('');
+  const full = save.lives >= MAX_LIVES;
+  const next = Math.max(0, LIFE_MS - (Date.now() - save.lifeTs));
+  $('lifeInfo').textContent = full ? T.full
+    : `${T.lifeNext}: ${fmtTime(next)} · ${T.lifeFull}: ${fmtTime(next + LIFE_MS * (MAX_LIVES - save.lives - 1))}`;
+  $('lifeAd').innerHTML = `${ico('play')} ${T.adLife} <small>(${lifeAdsLeft()})</small>`;
+  $('lifeCoin1').innerHTML = `+1 ${ico('heart')} · ${CONFIG.lifePrice} <i class="coin"></i>`;
+  $('lifeCoinAll').innerHTML = `${T.lifeAll} · ${CONFIG.refillPrice} <i class="coin"></i>`;
+  ['lifeAd', 'lifeCoin1', 'lifeCoinAll'].forEach(id => $(id).disabled = full);
+  if (lifeAdsLeft() <= 0) $('lifeAd').disabled = true;
+}
+function openLives() { initAudio(); tickLives(); renderLives(); $('livesDlg').classList.add('show'); }
+function gotLives(n) {
+  tickLives();
+  save.lives = Math.min(MAX_LIVES, save.lives + n);
+  if (save.lives >= MAX_LIVES) save.lifeTs = Date.now();
+  persist(); renderLives(); renderPills(); menuTexts(); sCoin(); buzz(25); toast(T.lifeGot);
+}
+function payCoins(price) {
+  if (save.coins >= price) { save.coins -= price; return true; }
+  toast(T.noCoins); sBad(); $('livesDlg').classList.remove('show'); openShop(); return false;
+}
+$('lifeAd').addEventListener('click', async () => {
+  if (lifeAdsLeft() <= 0) { toast(T.limitReached); return; }
+  if (await Ads.rewarded()) { save.lifeAdCount = (save.lifeAdCount || 0) + 1; gotLives(1); }
+});
+$('lifeCoin1').addEventListener('click', () => { if (payCoins(CONFIG.lifePrice)) gotLives(1); });
+$('lifeCoinAll').addEventListener('click', () => { if (payCoins(CONFIG.refillPrice)) gotLives(MAX_LIVES); });
+$('lifeClose').addEventListener('click', () => $('livesDlg').classList.remove('show'));
+$('livesDlg').addEventListener('click', e => { if (e.target.id === 'livesDlg') $('lifeClose').click(); });
+
+// ---------- Günlük hediye (7 günlük seri) ----------
+const DAILY = [{ coins: 50 }, { coins: 75 }, { hammer: 1 }, { coins: 100 }, { plus5: 1 }, { coins: 150 }, { clear: 1, coins: 200 }];
+function dailyState() {
+  const today = new Date().toDateString(), yest = new Date(Date.now() - 864e5).toDateString();
+  const d = save.daily || {};
+  if (d.last === today) return { ready: false, day: d.streak || 1 };
+  return { ready: true, day: d.last === yest ? ((d.streak || 0) % 7) + 1 : 1 };
+}
+function rewardHtml(r) {
+  return Object.entries(r).map(([k, v]) => k === 'coins' ? `+${v} <i class="coin"></i>` : `${boostIco(k)} +${v}`).join(' &nbsp; ');
+}
+function claimDaily() {
+  const st = dailyState();
+  if (!st.ready) { toast(T.dailyWait); return; }
+  const r = DAILY[st.day - 1];
+  for (const [k, v] of Object.entries(r)) { if (k === 'coins') save.coins += v; else save.inv[k] = (save.inv[k] || 0) + v; }
+  save.daily = { last: new Date().toDateString(), streak: st.day };
+  persist(); renderPills(); renderBoosts(); menuTexts();
+  play('gift', { exact: true }); duckMusic(1.1); setTimeout(sCoin, 700); buzz([20, 40, 20]); confetti();
+  showDialog({
+    instant: true, title: `${T.dailyTitle} · ${T.day} ${st.day}`, bigHtml: `<div class="goalbig">${rewardHtml(r)}</div>`,
+    sub: `<div class="week">${DAILY.map((x, i) => `<i class="${i < st.day ? 'got' : ''}">${i + 1}</i>`).join('')}</div>`,
+    main: T.ok, onMain: hideDialog, ghost: ''
+  });
+}
+$('dailyBtn').addEventListener('click', () => { initAudio(); claimDaily(); });
+
+// ---------- Günlük görevler: her gün 3 görev, altın ödüllü ----------
+const MISSIONS = [
+  { id: 'pop', n: [150, 250], r: [60, 100] },
+  { id: 'special', n: [4, 8], r: [80, 120] },
+  { id: 'combo', n: [1, 2], r: [100, 150] },
+  { id: 'win', n: [2, 3], r: [80, 120] },
+  { id: 'stars', n: [5, 8], r: [90, 130] },
+  { id: 'endless', n: [2000, 3500], r: [80, 120], max: true },
+  { id: 'ice', n: [12, 20], r: [100, 140], from: 6 },
+  { id: 'stone', n: [8, 14], r: [100, 140], from: 11 }
+];
+function missions() {
+  const today = new Date().toDateString();
+  if (save.mis && save.mis.day === today) return save.mis.list;
+  const d = new Date(), rand = seeded(d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate());
+  const pool = MISSIONS.filter(m => !m.from || save.unlocked > m.from), list = [];
+  while (list.length < 3 && pool.length) {
+    const m = pool.splice(Math.floor(rand() * pool.length), 1)[0], hard = rand() < .5 ? 1 : 0;
+    list.push({ id: m.id, n: m.n[hard], r: m.r[hard], p: 0, c: 0 });
+  }
+  save.mis = { day: today, list }; persist();
+  return list;
+}
+// Görev ilerlemesi; max: tek oyundaki en yüksek değer (sonsuz mod puanı gibi)
+function misAdd(id, v, max) {
+  if (!save.mis) missions();
+  const list = missions();
+  for (const m of list) {
+    if (m.id !== id || m.p >= m.n) continue;
+    m.p = Math.min(m.n, max ? Math.max(m.p, v) : m.p + v);
+    if (m.p >= m.n) setTimeout(() => toast(`${T.misDone} ${misText(m)}`, 2600), 700);
+  }
+  clearTimeout(misAdd.t); misAdd.t = setTimeout(persist, 400);
+}
+const misText = m => T['m_' + m.id].replace('{n}', m.n);
+function renderMissions() {
+  const list = missions();
+  $('misList').innerHTML = list.map((m, i) => `<div class="misRow${m.c ? ' done' : ''}">
+    <b>${misText(m)}</b>
+    <div class="bar"><i style="width:${Math.min(m.p / m.n * 100, 100)}%"></i></div>
+    <small>${Math.min(m.p, m.n)} / ${m.n}</small>
+    <button class="claim" data-mi="${i}" ${m.c || m.p < m.n ? 'disabled' : ''}>${m.c ? '✓' : `+${m.r} <i class="coin"></i>`}</button>
+  </div>`).join('');
+  $('misFoot').textContent = list.every(m => m.c) ? T.misAll : T.misNew;
+}
+function openMissions() { initAudio(); stopHint(); renderMissions(); $('misDlg').classList.add('show'); }
+$('misBtn').addEventListener('click', openMissions);
+$('misClose').addEventListener('click', () => { $('misDlg').classList.remove('show'); menuTexts(); });
+$('misList').addEventListener('click', e => {
+  const b = e.target.closest('[data-mi]'); if (!b || b.disabled) return;
+  const m = missions()[+b.dataset.mi];
+  if (m.c || m.p < m.n) return;
+  m.c = 1; save.coins += m.r; persist();
+  renderPills(); renderMissions(); menuTexts();
+  play('gift', { exact: true }); setTimeout(sCoin, 500); buzz([20, 40, 20]);
+  if (missions().every(x => x.c)) confetti();
+});
+
+// ---------- Konfeti ----------
+const cf = document.createElement('canvas'); cf.id = 'confetti'; document.body.appendChild(cf);
+function confetti() {
+  const x = cf.getContext('2d'), dpr = Math.min(window.devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+  cf.width = W * dpr; cf.height = H * dpr; x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const ps = Array.from({ length: 120 }, () => ({
+    x: Math.random() * W, y: -20 - Math.random() * H * .5, vx: (Math.random() - .5) * 140, vy: 140 + Math.random() * 220,
+    r: Math.random() * 6, vr: (Math.random() - .5) * 10, w: 6 + Math.random() * 6, h: 9 + Math.random() * 8,
+    c: FXCOL[Math.floor(Math.random() * FXCOL.length)]
+  }));
+  const t0 = performance.now(); let last = t0;
+  const step = now => {
+    const dt = Math.min((now - last) / 1000, .05); last = now;
+    x.clearRect(0, 0, W, H);
+    const a = Math.max(0, 1 - (now - t0) / 3200);
+    for (const p of ps) {
+      p.vy += 90 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt;
+      x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.globalAlpha = a; x.fillStyle = p.c;
+      x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 1.3))); x.restore();
+    }
+    if (a > 0) requestAnimationFrame(step); else x.clearRect(0, 0, W, H);
+  };
+  requestAnimationFrame(step);
+}
+function startEndless() {
+  initAudio();
+  mode = 'endless';
+  hideScreens(); newGame();
+}
+function showMenu() {
+  stopHint(); clearSel(); hideDialog();
+  $('map').classList.remove('show');
+  menuTexts(); renderPills();
+  $('menu').classList.add('show');
+}
+function menuTexts() {
+  $('mapInfo').textContent = `${T.level} ${save.unlocked}`;
+  $('endlessInfo').textContent = `${T.bestIs}: ${save.best}`;
+  const ds = dailyState();
+  $('dailyInfo').textContent = ds.ready ? T.dailyReady : T.dailyWait;
+  $('dailyBtn').classList.toggle('ready', ds.ready);
+  $('dailyDot').classList.toggle('hide', !ds.ready);
+  const ms = missions(), ready = ms.some(m => !m.c && m.p >= m.n);
+  $('misInfo').textContent = `${ms.filter(m => m.c).length} / ${ms.length}`;
+  $('misDot').classList.toggle('hide', !ready);
+  $('misBtn').classList.toggle('ready', ready);
+}
+// menü arka planında süzülen taşlar
+(function () {
+  const r = seeded(3); let h = '';
+  for (let i = 0; i < 14; i++) {
+    const sz = 16 + r() * 34, dur = 10 + r() * 12;
+    h += `<i class="g${i % 5}" style="left:${(r() * 100).toFixed(1)}%;width:${sz.toFixed(0)}px;height:${sz.toFixed(0)}px;animation-duration:${dur.toFixed(1)}s;animation-delay:-${(r() * dur).toFixed(1)}s"></i>`;
+  }
+  $('menuBg').innerHTML = h;
+  const SP = '<svg viewBox="0 0 100 100"><path d="M50 0C55 38 62 45 100 50 62 55 55 62 50 100 45 62 38 55 0 50 38 45 45 38 50 0Z" fill="#fff6c8"/></svg>';
+  document.querySelectorAll('[data-spark]').forEach(e => e.innerHTML = SP);
+})();
+
+// ---------- Harita ----------
+function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }; }
+function buildMap() {
+  const inner = $('mapInner'), w = Math.min($('mapScroll').clientWidth || 360, 480);
+  const L = Math.min(MAX_LEVEL, Math.max(save.unlocked + 9, 20));
+  const GAP = 104, H = L * GAP + 200;
+  inner.style.height = H + 'px';
+  const pts = [];
+  for (let i = 1; i <= L; i++) pts.push({ x: w / 2 + Math.sin(i * .85) * w * .3, y: H - 120 - (i - 1) * GAP });
+  const pathTo = n => {
+    let d = `M${pts[0].x.toFixed(1)},${pts[0].y}`;
+    for (let i = 1; i < n; i++) {
+      const a = pts[i - 1], b = pts[i], ym = (a.y + b.y) / 2;
+      d += ` C${a.x.toFixed(1)},${ym} ${b.x.toFixed(1)},${ym} ${b.x.toFixed(1)},${b.y}`;
+    }
+    return d;
+  };
+  const full = pathTo(L), done = pathTo(Math.min(save.unlocked, L));
+  const rand = seeded(7);
+  let decor = '';
+  for (let i = 0; i < L * 3; i++) {
+    const s = 1 + rand() * 3;
+    decor += `<i class="dot" style="left:${(rand() * 100).toFixed(1)}%;top:${(rand() * H).toFixed(0)}px;width:${s}px;height:${s}px;opacity:${(.15 + rand() * .5).toFixed(2)}"></i>`;
+  }
+  let nodes = '';
+  pts.forEach((p, i) => {
+    const n = i + 1, d = levelDef(n), st = save.stars[n] || 0;
+    const cls = n < save.unlocked || (st && n !== save.unlocked) ? 'done' : n === save.unlocked ? 'cur' : 'locked';
+    let badge = '';
+    if (d.gift && !save.gifts[n]) badge = `<span class="badge">${ICON.gift}</span>`;
+    else if (d.type === 'collect') badge = `<span class="badge gem g${d.color}"></span>`;
+    else if (d.type === 'ice' || d.type === 'stone') badge = `<span class="badge gem b${d.type}"></span>`;
+    const stars = st ? `<span class="st">${'★'.repeat(st)}<em>${'★'.repeat(3 - st)}</em></span>` : '';
+    nodes += `<button class="node ${cls}" data-n="${n}" style="left:${p.x.toFixed(1)}px;top:${p.y}px">${n}${badge}${stars}</button>`;
+  });
+  inner.innerHTML =
+    `<svg width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">
+       <path class="road-base" d="${full}"/><path class="road" d="${full}"/><path class="road-dash" d="${full}"/>
+       <path class="road-done" d="${done}"/></svg>` + decor + nodes;
+  inner.style.width = w + 'px';
+  return pts[Math.min(save.unlocked, L) - 1];
+}
+function showMap() {
+  setAim(null); stopHint(); clearSel(); hideDialog();
+  $('menu').classList.remove('show');
+  tickLives(); renderPills();
+  $('map').classList.add('show');
+  const cur = buildMap();
+  requestAnimationFrame(() => { const sc = $('mapScroll'); sc.scrollTop = cur.y - sc.clientHeight * .6; });
+}
+$('mapInner').addEventListener('click', e => {
+  const b = e.target.closest('.node');
+  if (!b || b.classList.contains('locked')) return;
+  initAudio(); previewLevel(+b.dataset.n);
+});
+
+// ---------- Mağaza ----------
+const SHOP = [
+  { k: 'hammer', price: 100 },
+  { k: 'plus5', price: 150 },
+  { k: 'clear', price: 300 },
+  { k: 'lives', price: CONFIG.refillPrice }
+];
+const PACKS = [{ id: 'coins_500', tag: '' }, { id: 'coins_1200', tag: '+20%' }, { id: 'coins_3000', tag: '+50%' }];
+function adsLeftToday() {
+  const d = new Date().toDateString();
+  if (save.adDay !== d) { save.adDay = d; save.adCount = 0; }
+  return Math.max(0, CONFIG.rewardPerDay - (save.adCount || 0));
+}
+// Dışarıdan (Google Play) gelen metni HTML'e koymadan önce zararsızlaştır
+const esc = v => String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+function priceLabel(id) {
+  const p = Shop.price(id);
+  if (p) return esc(p);
+  if (DEV) return 'TEST';
+  return NATIVE ? '…' : T.soon;
+}
+function renderShop() {
+  const left = adsLeftToday();
+  const canPay = !!(NATIVE || DEV);
+  let top = save.noAds
+    ? `<div class="item hl"><div class="ic">${ICON.noads}</div><div class="tx"><b>${T.noAds}</b><span>${T.noAdsOwned} ✓</span></div></div>`
+    : `<div class="item hl"><div class="ic">${ICON.noads}</div><div class="tx"><b>${T.noAds}</b><span>${T.noAdsDesc}</span></div>
+        <button class="buy" data-iap="${CONFIG.noAdsId}" ${canPay ? '' : 'disabled'}>${priceLabel(CONFIG.noAdsId)}</button></div>`;
+  top += `<div class="item"><div class="ic">${ICON.play}</div><div class="tx"><b>${T.freeCoins} +${CONFIG.rewardCoins} <i class="coin"></i></b>
+      <span>${T.freeCoinsDesc}</span><div class="own">${T.left}: ${left}/${CONFIG.rewardPerDay}</div></div>
+      <button class="buy blue" data-adcoins ${left <= 0 ? 'disabled' : ''}>${T.watch}</button></div>`;
+  $('shopItems').innerHTML = top + SHOP.map(s => {
+    const icon = s.k === 'lives' ? ICON.heart : boostIco(s.k);
+    const own = s.k === 'lives' ? `${save.lives}/${MAX_LIVES}` : `${T.owned}: ${save.inv[s.k] || 0}`;
+    const dis = s.k === 'lives' && save.lives >= MAX_LIVES;
+    return `<div class="item"><div class="ic">${icon}</div>
+      <div class="tx"><b>${T[s.k]}</b><span>${T[s.k + 'Desc']}</span><div class="own">${own}</div></div>
+      <button class="buy" data-buy="${s.k}" ${dis ? 'disabled' : ''}>${dis ? T.full : s.price + ' <i class="coin"></i>'}</button></div>`;
+  }).join('');
+  $('shopPacks').innerHTML = PACKS.map(p =>
+    `<div class="item"><div class="ic"><i class="coin" style="font-size:26px"></i></div>
+      <div class="tx"><b>${CONFIG.coinPacks[p.id]} <i class="coin"></i>${p.tag ? `<span class="tag">${p.tag}</span>` : ''}</b></div>
+      <button class="buy" data-iap="${p.id}" ${canPay ? '' : 'disabled'}>${priceLabel(p.id)}</button></div>`).join('');
+  $('payNote').textContent = canPay ? T.payNote : T.storeNA;
+  $('restoreBtn').classList.toggle('hide', !NATIVE);
+}
+function openShop() { initAudio(); stopHint(); renderShop(); renderPills(); $('shop').classList.add('show'); }
+$('shopItems').addEventListener('click', async e => {
+  const iap = e.target.closest('[data-iap]');
+  if (iap && !iap.disabled) { Shop.buy(iap.dataset.iap); return; }
+  const adb = e.target.closest('[data-adcoins]');
+  if (adb && !adb.disabled) {
+    if (adsLeftToday() <= 0) { toast(T.limitReached); return; }
+    if (await Ads.rewarded()) {
+      adsLeftToday(); save.adCount = (save.adCount || 0) + 1; save.coins += CONFIG.rewardCoins;
+      persist(); sCoin(); renderShop(); renderPills(); toast(`+${CONFIG.rewardCoins}`);
+    }
+    return;
+  }
+  const b = e.target.closest('[data-buy]'); if (!b || b.disabled) return;
+  const s = SHOP.find(x => x.k === b.dataset.buy);
+  if (save.coins < s.price) {
+    toast(T.noCoins); sBad();
+    b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+    return;
+  }
+  save.coins -= s.price;
+  if (s.k === 'lives') { save.lives = MAX_LIVES; save.lifeTs = Date.now(); } else save.inv[s.k] = (save.inv[s.k] || 0) + 1;
+  persist(); sCoin(); buzz(20); toast(T.bought);
+  renderShop(); renderPills(); renderBoosts(); menuTexts();
+});
+$('shopPacks').addEventListener('click', e => {
+  const iap = e.target.closest('[data-iap]');
+  if (iap && !iap.disabled) Shop.buy(iap.dataset.iap);
+});
+$('restoreBtn').addEventListener('click', () => Shop.restore());
+$('shopClose').addEventListener('click', () => {
+  $('shop').classList.remove('show');
+  if ($('map').classList.contains('show')) buildMap();
+  if (grid.length && !finished) armHint();
+});
+$('shop').addEventListener('click', e => { if (e.target.id === 'shop') $('shopClose').click(); });
+
+// ---------- Reklamlar (AdMob) ----------
+// Geçiş reklamı: ilk 3 bölümde yok, sonra her 2 bölüm sonunda bir; "Reklamları Kaldır" alınınca hiç yok.
+// Ödüllü reklam: oyuncu kendisi seçer (+1 can, +5 hamle, bedava altın); reklamsız sürümde de isteğe bağlı kalır.
+const Ads = {
+  ready: false, privacyNeeded: false, ends: 0,
+  async init() {
+    if (!NATIVE) return;
+    const A = NATIVE.AdMob;
+    try {
+      const ci = await A.requestConsentInfo();
+      if (ci.isConsentFormAvailable && ci.status === 'REQUIRED') await A.showConsentForm();
+      const c2 = await A.requestConsentInfo();
+      this.privacyNeeded = c2.privacyOptionsRequirementStatus === 'REQUIRED';
+    } catch (e) {}
+    try { await A.initialize({ initializeForTesting: CONFIG.adsTesting }); this.ready = true; } catch (e) {}
+    syncPrivacyUI();
+  },
+  boardOn: false, boardTok: 0,
+  async showBoard() {
+    if (save.noAds || this.boardOn) return;
+    if (!NATIVE && !DEV) return;
+    if (NATIVE && !this.ready) return;
+    if (window.__storeShot) return;   // mağaza görselinde boş reklam alanı görünmesin
+    this.boardOn = true; const tok = ++this.boardTok;
+    document.body.classList.add('board-on');
+    $('adBoard').classList.remove('hide');
+    $('adSlot').classList.toggle('mock', !NATIVE);
+    $('adSlot').textContent = NATIVE ? '' : `${T.adLabel} 300×250`;
+    if (!NATIVE) return;
+    await wait(120);
+    if (tok !== this.boardTok) return;
+    const r = $('adSlot').getBoundingClientRect();
+    const margin = Math.max(0, Math.round(window.innerHeight - r.bottom));
+    try {
+      await NATIVE.AdMob.showBanner({ ...Privacy.adOptions(CONFIG.bannerId), adSize: 'MEDIUM_RECTANGLE', position: 'BOTTOM_CENTER', margin });
+      if (tok !== this.boardTok) NATIVE.AdMob.removeBanner().catch(() => {});
+    } catch (e) {}
+  },
+  hideBoard() {
+    if (!this.boardOn) return;
+    this.boardOn = false; this.boardTok++;
+    document.body.classList.remove('board-on');
+    $('adBoard').classList.add('hide');
+    if (NATIVE && this.ready) NATIVE.AdMob.removeBanner().catch(() => {});
+  },
+  async levelEnd() {
+    if (save.noAds) return;
+    this.ends++;
+    if (level < CONFIG.firstAdLevel || this.ends % CONFIG.interstitialEvery !== 0) return;
+    await this.interstitial();
+  },
+  async endlessCheck() {
+    if (save.noAds || !endlessStart || Date.now() - endlessStart < CONFIG.endlessAdMs) return;
+    endlessStart = Date.now();
+    await this.interstitial();
+  },
+  async interstitial() {
+    if (NATIVE) {
+      if (!this.ready) return;
+      const A = NATIVE.AdMob;
+      pauseAudio();
+      try {
+        await A.prepareInterstitial(Privacy.adOptions(CONFIG.interstitialId));
+        const done = adEvents(['interstitialAdDismissed', 'interstitialAdFailedToShow']);
+        await A.showInterstitial(); await done;
+      } catch (e) {}
+      resumeAudio();
+    } else if (DEV) await mockAd();
+  },
+  async rewarded() {
+    if (NATIVE) {
+      if (!this.ready) { toast(T.adNotReady); return false; }
+      const A = NATIVE.AdMob;
+      let got = false;
+      const h = await A.addListener('onRewardedVideoAdReward', () => { got = true; });
+      pauseAudio();
+      try {
+        await A.prepareRewardVideoAd(Privacy.adOptions(CONFIG.rewardedId));
+        const done = adEvents(['onRewardedVideoAdDismissed', 'onRewardedVideoAdFailedToShow']);
+        const item = await A.showRewardVideoAd();
+        if (item && item.amount) got = true;
+        await done; await wait(250);
+      } catch (e) { toast(T.adNotReady); }
+      h.remove(); resumeAudio();
+      return got;
+    }
+    if (DEV) return mockAd();
+    toast(T.adNotReady); return false;
+  }
+};
+function adEvents(names) {
+  const A = NATIVE.AdMob;
+  return new Promise(res => {
+    const hs = []; let done = false;
+    const fin = () => { if (done) return; done = true; hs.forEach(p => p.then(h => h.remove())); res(); };
+    names.forEach(n => hs.push(Promise.resolve(A.addListener(n, fin))));
+    setTimeout(fin, 120000);
+  });
+}
+function pauseAudio() { stopMusic(); if (ac) ac.suspend(); }
+function resumeAudio() { if (ac) ac.resume(); startMusic(); }
+// Bilgisayarda test için sahte reklam (yalnızca localhost'ta görünür)
+function mockAd() {
+  return new Promise(res => {
+    const m = $('adMock'), btn = $('adMockClose');
+    let n = 3; btn.disabled = true; btn.textContent = n;
+    m.classList.add('show'); pauseAudio();
+    const iv = setInterval(() => { n--; if (n > 0) btn.textContent = n; else { clearInterval(iv); btn.disabled = false; btn.textContent = T.close; } }, 1000);
+    btn.onclick = () => { if (btn.disabled) return; m.classList.remove('show'); resumeAudio(); res(true); };
+  });
+}
+
+// ---------- Uygulama içi satın alma (Google Play Billing) ----------
+const Shop = {
+  ready: false,
+  async init() {
+    if (!NATIVE) return;
+    const { store, ProductType, Platform } = NATIVE, P = Platform.GOOGLE_PLAY;
+    store.register([
+      { id: CONFIG.noAdsId, type: ProductType.NON_CONSUMABLE, platform: P },
+      ...Object.keys(CONFIG.coinPacks).map(id => ({ id, type: ProductType.CONSUMABLE, platform: P }))
+    ]);
+    store.when()
+      .productUpdated(() => { if ($('shop').classList.contains('show')) renderShop(); })
+      .approved(tx => { this.grant(tx); tx.finish(); });
+    try { await store.initialize([P]); this.ready = true; } catch (e) {}
+    if (store.owned(CONFIG.noAdsId)) setNoAds(false);
+  },
+  grant(tx) {
+    const tid = tx.transactionId;
+    save.txs = save.txs || [];
+    for (const p of tx.products || []) {
+      if (p.id === CONFIG.noAdsId) setNoAds(true);
+      else if (CONFIG.coinPacks[p.id]) {
+        if (save.txs.includes(tid)) continue;     // aynı satın alma iki kez sayılmasın
+        save.txs.push(tid); if (save.txs.length > 100) save.txs.shift();
+        save.coins += CONFIG.coinPacks[p.id];
+        persist(); renderPills(); sCoin(); toast(T.bought);
+        if ($('shop').classList.contains('show')) renderShop();
+      }
+    }
+  },
+  price(id) {
+    if (!NATIVE || !this.ready) return null;
+    const p = NATIVE.store.get(id);
+    return p && p.pricing ? p.pricing.price : null;
+  },
+  async buy(id) {
+    if (NATIVE) {
+      const p = this.ready && NATIVE.store.get(id), o = p && p.getOffer();
+      if (!o) { toast(T.storeNA); return; }
+      const err = await o.order();
+      if (err && !/cancel/i.test(err.message || '')) toast(err.message || T.storeNA);
+      return;
+    }
+    if (DEV) { this.grant({ transactionId: 'dev-' + Date.now(), products: [{ id }] }); return; }
+    toast(T.storeNA);
+  },
+  async restore() {
+    if (!NATIVE || !this.ready) { toast(T.storeNA); return; }
+    try { await NATIVE.store.restorePurchases(); } catch (e) {}
+    if (NATIVE.store.owned(CONFIG.noAdsId)) setNoAds(false);
+    toast(T.restored);
+  }
+};
+function setNoAds(announce) {
+  if (save.noAds) return;
+  save.noAds = true; persist(); Ads.hideBoard();
+  if (announce) { toast(T.adsRemoved); sCoin(); buzz([30, 50, 30]); }
+  if ($('shop').classList.contains('show')) renderShop();
+}
+
+
+// ---------- Ayarlar ----------
+function syncPrivacyUI() {
+  $('privacyOpts').classList.toggle('hide', !(NATIVE && Ads.privacyNeeded));
+  $('privacyLink').classList.toggle('hide', !CONFIG.privacyUrl);
+}
+$('privacyOpts').addEventListener('click', async () => { try { await NATIVE.AdMob.showPrivacyOptionsForm(); } catch (e) {} });
+$('privacyLink').addEventListener('click', () => { if (CONFIG.privacyUrl) window.open(CONFIG.privacyUrl, '_blank'); });
+function renderPrivacy() {
+  $('privacyText').innerHTML = T.privacyBody;
+  $('optPers').checked = Privacy.personalized;
+  $('optPers').disabled = !FEATURES.tracking;
+  $('rowPers').classList.toggle('locked', !FEATURES.tracking);
+  $('persSub').textContent = Privacy.personalized ? T.persOn : (FEATURES.tracking ? T.persOff : T.offForNow);
+  syncPrivacyUI();
+}
+$('openPrivacy').addEventListener('click', () => { renderPrivacy(); $('privacy').classList.add('show'); });
+$('privacyDone').addEventListener('click', () => $('privacy').classList.remove('show'));
+$('privacy').addEventListener('click', e => { if (e.target.id === 'privacy') $('privacyDone').click(); });
+$('optPers').addEventListener('change', e => {
+  if (!FEATURES.tracking) { e.target.checked = false; return; }
+  settings.persAds = e.target.checked; saveSettings(); renderPrivacy();
+});
+$('resetData').addEventListener('click', () => {
+  if (!window.confirm(T.resetConfirm)) return;
+  try { ['gleampop_save', 'gleampop_settings'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
+  location.reload();
+});
+$('ver').textContent = VERSION;
+function syncSettingsUI() {
+  syncPrivacyUI();
+  $('volMusic').value = Math.round(settings.musicVol * 100); $('volMusicV').textContent = Math.round(settings.musicVol * 100) + '%';
+  $('volSfx').value = Math.round(settings.sfxVol * 100); $('volSfxV').textContent = Math.round(settings.sfxVol * 100) + '%';
+  $('optVibe').checked = settings.vibe;
+  $('langSel').value = settings.lang;
+}
+$('settingsDone').addEventListener('click', () => { $('settings').classList.remove('show'); if (grid.length && !finished) armHint(); });
+$('settings').addEventListener('click', e => { if (e.target.id === 'settings') $('settingsDone').click(); });
+$('volMusic').addEventListener('input', e => {
+  settings.musicVol = e.target.value / 100; $('volMusicV').textContent = e.target.value + '%';
+  initAudio(); applyVolumes();
+  if (settings.musicVol > 0) startMusic(); else stopMusic();
+});
+$('volSfx').addEventListener('input', e => {
+  settings.sfxVol = e.target.value / 100; $('volSfxV').textContent = e.target.value + '%'; applyVolumes();
+});
+$('volSfx').addEventListener('change', () => { saveSettings(); sSwap(); });   // bırakınca örnek ses
+$('volMusic').addEventListener('change', saveSettings);
+$('optVibe').addEventListener('change', e => { settings.vibe = e.target.checked; saveSettings(); buzz(30); });
+$('langSel').addEventListener('change', e => {
+  settings.lang = e.target.value; saveSettings();
+  applyTexts(); syncSettingsUI(); menuTexts(); setFoot(); renderPills();
+  if ($('shop').classList.contains('show')) renderShop();
+  if ($('privacy').classList.contains('show')) renderPrivacy();
+  if (grid.length) updateUI();
+});
+
+// ---------- Dokunma / kaydırma ----------
+let start = null;
+function cellAt(e) {
+  const rect = board.getBoundingClientRect();
+  const c = Math.floor((e.clientX - rect.left) / rect.width * N);
+  const r = Math.floor((e.clientY - rect.top) / rect.height * N);
+  return (r >= 0 && r < N && c >= 0 && c < N) ? { r, c } : null;
+}
+board.addEventListener('pointerdown', e => {
+  initAudio();
+  if (busy || locked()) return;
+  const cell = cellAt(e); if (!cell) return;
+  e.preventDefault();
+  if (aiming === 'hammer') { useHammer(cell.r, cell.c); return; }
+  start = { ...cell, x: e.clientX, y: e.clientY, moved: false };
+  try { board.setPointerCapture(e.pointerId); } catch (err) {}
+});
+board.addEventListener('pointermove', e => {
+  if (!start || start.moved) return;
+  const dx = e.clientX - start.x, dy = e.clientY - start.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < board.clientWidth / N * 0.3) return;
+  start.moved = true;
+  let r2 = start.r, c2 = start.c;
+  if (Math.abs(dx) > Math.abs(dy)) c2 += Math.sign(dx); else r2 += Math.sign(dy);
+  if (r2 >= 0 && r2 < N && c2 >= 0 && c2 < N) trySwap(start.r, start.c, r2, c2);
+});
+board.addEventListener('pointerup', () => {
+  if (!start) return;
+  const s = start; start = null;
+  if (s.moved || busy) return;
+  if (sel) {
+    if (sel.r === s.r && sel.c === s.c) { clearSel(); return; }
+    if (Math.abs(sel.r - s.r) + Math.abs(sel.c - s.c) === 1) { const a = sel; trySwap(a.r, a.c, s.r, s.c); return; }
+  }
+  setSel(s.r, s.c);
+});
+board.addEventListener('pointercancel', () => { start = null; });
+board.addEventListener('contextmenu', e => e.preventDefault());
+
+// ---------- Düğmeler ----------
+document.querySelectorAll('.boost[data-b]').forEach(b => b.addEventListener('click', () => onBoost(b.dataset.b)));
+document.querySelectorAll('[data-open="shop"]').forEach(b => b.addEventListener('click', () => { if (!busy) { setAim(null); openShop(); } }));
+document.querySelectorAll('[data-open="settings"]').forEach(b => b.addEventListener('click', () => {
+  initAudio(); stopHint(); syncSettingsUI(); $('settings').classList.add('show');
+}));
+$('restartBtn').addEventListener('click', async () => {
+  if (busy || !grid.length) return;
+  if (mode === 'endless') { await Ads.endlessCheck(); newGame(); }
+  else startLevel(level);           // bölümü baştan almak yeni bir oyun: 1 can
+});
+$('homeBtn').addEventListener('click', () => {
+  if (busy) return;
+  if (mode === 'level') showMap();
+  else if (score > 0 && !finished) endlessOver();
+  else showMenu();
+});
+$('dlgAd').addEventListener('click', () => dlg.onAd && dlg.onAd());
+document.querySelectorAll('[data-open="lives"]').forEach(b => b.addEventListener('click', openLives));
+$('dlgMain').addEventListener('click', () => dlg.onMain && dlg.onMain());
+$('dlgGhost').addEventListener('click', () => dlg.onGhost && dlg.onGhost());
+$('dlgAlt').addEventListener('click', () => dlg.onAlt && dlg.onAlt());
+$('modeMap').addEventListener('click', () => { initAudio(); showMap(); });
+$('modeEndless').addEventListener('click', startEndless);
+$('mapBack').addEventListener('click', showMenu);
+
+// ---------- Düğme sesi ----------
+document.addEventListener('pointerdown', () => initAudio(), { passive: true });
+document.addEventListener('click', e => {
+  const b = e.target.closest('button, .row, .node');
+  if (!b || b.closest('#board') || b.matches('[data-buy], [data-iap], .boost')) return;
+  play('click');
+}, true);
+
+// ---------- Android: geri tuşu, arka plana geçiş ----------
+function isShown(id) { return $(id).classList.contains('show'); }
+if (NATIVE) {
+  NATIVE.App.addListener('backButton', () => {
+    if (isShown('adMock')) return;
+    if (isShown('privacy')) { $('privacyDone').click(); return; }
+    if (isShown('consent')) { NATIVE.App.exitApp(); return; }
+    if (isShown('settings')) { $('settingsDone').click(); return; }
+    if (isShown('shop')) { $('shopClose').click(); return; }
+    if (isShown('livesDlg')) { $('lifeClose').click(); return; }
+    if (isShown('misDlg')) { $('misClose').click(); return; }
+    if (isShown('privacy')) { $('privacyDone').click(); return; }
+    if (isShown('over') && dlg.ghost && !dlg.board) { $('dlgGhost').click(); return; }
+    if (isShown('over')) return;                       // bölüm sonu penceresinde bir seçim yapılmalı
+    if (aiming) { setAim(null); return; }
+    if (isShown('map')) { showMenu(); return; }
+    if (isShown('menu')) { NATIVE.App.exitApp(); return; }
+    $('homeBtn').click();
+  });
+  NATIVE.App.addListener('pause', () => { stopMusic(); if (ac) ac.suspend(); });
+  NATIVE.App.addListener('resume', () => { if (ac) { ac.resume(); startMusic(); } tickLives(); renderPills(); });
+}
+
+tickLives(); renderPills(); renderBoosts(); setFoot();
+showMenu();
+const CONSENT_VERSION = 1;
+let servicesStarted = false;
+function startServices() { if (servicesStarted) return; servicesStarted = true; Ads.init(); Shop.init(); }
+$('consentOk').addEventListener('click', () => {
+  settings.consent = CONSENT_VERSION; saveSettings();
+  $('consent').classList.remove('show');
+  initAudio(); startServices();
+});
+$('consentRead').addEventListener('click', () => { renderPrivacy(); $('privacy').classList.add('show'); });
+
+// Yalnızca bilgisayarda test ve mağaza görselleri için (Android sürümünde çalışmaz)
+if (DEV) {
+  const q = new URLSearchParams(location.search), shot = q.get('shot');
+  if (TEXT[q.get('lang')]) {
+    settings.lang = q.get('lang'); applyTexts(); menuTexts(); setFoot(); window.__storeShot = true;
+    save.lives = MAX_LIVES; save.lifeTs = Date.now();
+    const st = document.createElement('style');   // mağaza görüntüleri: animasyonsuz, net kare
+    st.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+    document.head.appendChild(st);
+  }
+  if (shot === 'game') { save.unlocked = Math.max(save.unlocked, 7); startLevel(7); }
+  if (shot === 'collect') { save.unlocked = Math.max(save.unlocked, 8); startLevel(8); }
+  if (shot === 'shop') openShop();
+  if (shot === 'lives') { save.lives = 2; save.lifeTs = Date.now() - 7 * 60000; showMap(); openLives(); }
+  if (shot === 'daily') claimDaily();
+  if (shot === 'win') { save.unlocked = Math.max(save.unlocked, 5); startLevel(5); setTimeout(() => { score = 1460; moves = 9; updateUI(); levelWin(); }, 1500); }
+  if (shot === 'map') { Object.assign(save, { unlocked: 9, stars: { 1: 3, 2: 3, 3: 2, 4: 3, 5: 1, 6: 3, 7: 2, 8: 3 } }); showMap(); }
+}
+if (settings.consent >= CONSENT_VERSION || window.__storeShot) startServices();
+else $('consent').classList.add('show');
+
+if (DEV) window.__game = { Ads, Privacy, FEATURES, forceFail: () => { finished = true; levelFail(); }, get grid() { return colors(); }, trySwap, reshuffle, startLevel, startEndless, showMap, onBoost, useHammer,
+  findMove: () => findMove(colors()), anyMove, save,
+  setSp: (r, c, sp, color) => setSp(grid[r][c], sp, color), setColor: (r, c, col) => { const t = grid[r][c]; t.color = col; t.sp = null; t.el.className = 'tile'; t.el.firstChild.className = 'gem g' + col; },
+  get sps() { return grid.map(row => row.map(t => t && t.sp ? t.sp : '.').join('')); },
+  get state() { return { mode, level, score, moves, busy, collected, finished, aiming, def }; },
+  get audio() { return { ctx: ac && ac.state, music: music.on, step: music.step }; } };
+})();
+</script>
+</body>
+</html>

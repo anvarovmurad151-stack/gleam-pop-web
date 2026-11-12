@@ -1450,7 +1450,10 @@ let sfxLoading = null, lastPick = {};
 function loadSfx() {
   if (sfxLoading || !ac) return sfxLoading;
   sfxLoading = Promise.all([...new Set(Object.values(SFX).flat())].map(async n => {
-    try { const r = await fetch('sounds/' + n + '.ogg'); sfxBuf[n] = await ac.decodeAudioData(await r.arrayBuffer()); } catch (e) {}
+    // önce .ogg; çözülemezse (eski iPhone Safari) aynı sesin .m4a kopyası
+    for (const ext of ['ogg', 'm4a']) {
+      try { const r = await fetch('sounds/' + n + '.' + ext); sfxBuf[n] = await ac.decodeAudioData(await r.arrayBuffer()); break; } catch (e) {}
+    }
   }));
   return sfxLoading;
 }

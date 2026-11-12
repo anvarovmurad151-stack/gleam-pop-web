@@ -655,7 +655,7 @@ body.board-on #over .dialog{max-height:calc(100dvh - 300px)}
 (() => {
 'use strict';
 const N = 8, K = 6, MAX_LEVEL = 99, MAX_LIVES = 5, LIFE_MS = 20 * 60 * 1000;
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 
 // ---------- Yayın ayarları ----------
 // ÖNEMLİ: Reklam kimlikleri şimdilik Google'ın herkese açık TEST kimlikleri. Yayından önce
@@ -1170,7 +1170,11 @@ function hitIce(r, c) {
       size:s * (.08 + Math.random() * .08), rot:Math.random() * 6, vr:(Math.random() - .5) * 12, col:'#d6efff' });
   }
   fxStart();
-  if (ice[r][c] > 0) { el.classList.remove('l2'); el.classList.remove('crack'); void el.offsetWidth; el.classList.add('crack'); return 0; }
+  if (ice[r][c] > 0) {                                          // kalın buz çatladı ama kırılmadı
+    playL('ice', { rate: 1.18, vol: .7, pan: panOf(c) });
+    el.classList.remove('l2'); el.classList.remove('crack'); void el.offsetWidth; el.classList.add('crack'); return 0;
+  }
+  playL('ice', { pan: panOf(c) }); playL('ice', { rate: .82, vol: .55, delay: .035, pan: panOf(c) }, 1);
   el.classList.add('gone'); setTimeout(() => el.remove(), 320); iceEls[r][c] = null;
   iceDone++; misAdd('ice', 1);
   return 1;
@@ -1405,12 +1409,21 @@ const SFX = {
   click:  ['click_001'],
   win:    ['jingles_STEEL02'],   // yükselen melodi
   fail:   ['jingles_PIZZI01'],   // alçalan melodi
-  gift:   ['jingles_PIZZI02']
+  gift:   ['jingles_PIZZI02'],
+  // özel bloklar ve engeller (Kenney Impact Sounds / RPG Audio, CC0)
+  ice:    ['impactGlass_light_000', 'impactGlass_light_001', 'impactGlass_light_002', 'impactGlass_light_003', 'impactGlass_light_004'], // ince buz çatlaması
+  rock:   ['impactMining_000', 'impactMining_001', 'impactMining_002', 'impactMining_003', 'impactMining_004'],                       // kazma taşa vurur
+  rubble: ['footstep_concrete_000', 'footstep_concrete_001', 'footstep_concrete_002', 'footstep_concrete_003', 'footstep_concrete_004'], // dökülen taş parçaları
+  beam:   ['drawKnife1', 'drawKnife2', 'drawKnife3'],                                                                                   // metalik sıyrılma: ışın
+  thump:  ['impactPunch_heavy_000', 'impactPunch_heavy_001', 'impactPunch_heavy_002', 'impactPunch_heavy_003', 'impactPunch_heavy_004'], // patlamanın gövdesi
+  prism:  ['impactBell_heavy_000', 'impactBell_heavy_001', 'impactBell_heavy_002', 'impactBell_heavy_003', 'impactBell_heavy_004'],     // çan: prizma
+  forge:  ['impactMetal_light_000', 'impactMetal_light_001', 'impactMetal_light_002', 'impactMetal_light_003', 'impactMetal_light_004']  // kristal tınısı: özel blok doğar
 };
 // Ses yüksekliği dengeleme (audio-design skill'i): her dosya ITU-R BS.1770 ile ölçüldü (en yüksek 400 ms),
 // mobil hedefe göre olay türüne göre hedeflendi: cam kırılması -16, patlama/para -19, değiştirme -21,
 // karıştırma -22, düşme -27, tık -26, melodiler -16 LUFS. Değer = o dosyaya uygulanan çarpan.
-const SFX_GAIN = {"chips-collide-1": 1.549, "chips-collide-2": 1.738, "chips-collide-3": 1.641, "chips-collide-4": 2.512, "glass_001": 1.109, "glass_002": 1.445, "glass_003": 1.096, "glass_004": 0.462, "glass_005": 1.585, "glass_006": 1.622, "impactGlass_medium_000": 1.23, "impactGlass_medium_001": 1.175, "impactGlass_medium_002": 1.259, "impactGlass_medium_003": 1.216, "impactGlass_medium_004": 1.084, "impactGlass_heavy_000": 2.163, "impactGlass_heavy_001": 2.239, "impactGlass_heavy_002": 2.317, "impactGlass_heavy_003": 1.82, "impactGlass_heavy_004": 2.042, "chip-lay-1": 0.603, "chip-lay-2": 1.084, "chip-lay-3": 0.794, "impactWood_light_002": 1.047, "handleCoins": 1.047, "handleCoins2": 2.512, "card-shuffle": 1.334, "chips-stack-6": 1.202, "click_001": 1.972, "jingles_STEEL02": 0.495, "jingles_PIZZI01": 0.537, "jingles_PIZZI02": 0.513};
+// v1.0.6 eklenenler: buz -18, kaya -19, moloz -24, ışın -19, patlama gövdesi -17, prizma çanı -20, kristal -22 LUFS.
+const SFX_GAIN = {"chips-collide-1": 1.549, "chips-collide-2": 1.738, "chips-collide-3": 1.641, "chips-collide-4": 2.512, "glass_001": 1.109, "glass_002": 1.445, "glass_003": 1.096, "glass_004": 0.462, "glass_005": 1.585, "glass_006": 1.622, "impactGlass_medium_000": 1.23, "impactGlass_medium_001": 1.175, "impactGlass_medium_002": 1.259, "impactGlass_medium_003": 1.216, "impactGlass_medium_004": 1.084, "impactGlass_heavy_000": 2.163, "impactGlass_heavy_001": 2.239, "impactGlass_heavy_002": 2.317, "impactGlass_heavy_003": 1.82, "impactGlass_heavy_004": 2.042, "chip-lay-1": 0.603, "chip-lay-2": 1.084, "chip-lay-3": 0.794, "impactWood_light_002": 1.047, "handleCoins": 1.047, "handleCoins2": 2.512, "card-shuffle": 1.334, "chips-stack-6": 1.202, "click_001": 1.972, "jingles_STEEL02": 0.495, "jingles_PIZZI01": 0.537, "jingles_PIZZI02": 0.513, "impactGlass_light_000": 1.23, "impactGlass_light_001": 1.189, "impactGlass_light_002": 1.059, "impactGlass_light_003": 1.202, "impactGlass_light_004": 1.175, "impactMining_000": 0.724, "impactMining_001": 0.759, "impactMining_002": 1.135, "impactMining_003": 0.944, "impactMining_004": 0.813, "footstep_concrete_000": 1.189, "footstep_concrete_001": 1.413, "footstep_concrete_002": 1.413, "footstep_concrete_003": 1.274, "footstep_concrete_004": 1.175, "drawKnife1": 4.5, "drawKnife2": 4.5, "drawKnife3": 4.5, "impactPunch_heavy_000": 0.822, "impactPunch_heavy_001": 0.822, "impactPunch_heavy_002": 0.804, "impactPunch_heavy_003": 0.832, "impactPunch_heavy_004": 0.813, "impactBell_heavy_000": 0.871, "impactBell_heavy_001": 0.692, "impactBell_heavy_002": 0.944, "impactBell_heavy_003": 1.047, "impactBell_heavy_004": 1.245, "impactMetal_light_000": 0.495, "impactMetal_light_001": 0.543, "impactMetal_light_002": 0.589, "impactMetal_light_003": 0.417, "impactMetal_light_004": 0.638};
 
 // Ses grupları:  Müzik -> MüzikKısma ─┐
 //                Efekt ───────────────┼─> Ana -> Sınırlayıcı (-1 dB tavan) -> hoparlör
@@ -1427,6 +1440,22 @@ function buildMix() {
   mix.duck = ac.createGain(); mix.duck.connect(mix.master);
   mix.music = ac.createGain(); mix.music.connect(mix.duck);
   mix.sfx = ac.createGain(); mix.sfx.connect(mix.master);
+  // kısa oda yankısı: sesler "boşlukta" değil, bir masanın üstünde çalıyormuş gibi duyulur
+  try {
+    const len = Math.floor(ac.sampleRate * .7), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch); let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const t = i / ac.sampleRate, n = Math.random() * 2 - 1;
+        lp += (n - lp) * (t < .05 ? .6 : .35);                      // zamanla tizler söner (gerçek odadaki gibi)
+        d[i] = (t < .008 ? 0 : lp) * Math.pow(1 - i / len, 3.2) * (i < ac.sampleRate * .025 && i % 211 < 3 ? 2.2 : 1);
+      }
+    }
+    const conv = ac.createConvolver(); conv.buffer = ir;
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 280;  // yankıda bas çamuru olmasın
+    const wet = ac.createGain(); wet.gain.value = .16;
+    mix.sfx.connect(hp); hp.connect(conv); conv.connect(wet); wet.connect(mix.master);
+  } catch (e) {}
   mix.ui = ac.createGain(); mix.ui.connect(mix.master);
   applyVolumes(true);
 }
@@ -1474,14 +1503,30 @@ function play(kind, o) {
   src.playbackRate.value = (o.rate || 1) * (o.exact ? 1 : .965 + Math.random() * .07);
   const vary = o.exact ? 1 : .84 + Math.random() * .32;
   g.gain.value = (SFX_GAIN[name] || 1) * (o.vol == null ? 1 : o.vol) * vary;
-  src.connect(g); g.connect(kind === 'click' ? mix.ui : mix.sfx);
+  let out = g;
+  if (o.pan && ac.createStereoPanner) {                     // sütuna göre hafif sağ/sol: ses taşın olduğu yerden gelir
+    const pn = ac.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, o.pan)); g.connect(pn); out = pn;
+  }
+  src.connect(g); out.connect(kind === 'click' ? mix.ui : mix.sfx);
   src.start(ac.currentTime + (o.delay || 0));
 }
-const sPop = combo => { play('pop', { rate: 1 + Math.min(combo - 1, 6) * .07 }); if (combo >= 3) play('popBig', { vol: .6 }); };
+const recent = {};
+function playL(kind, o, max) {
+  const now = performance.now(), arr = (recent[kind] || []).filter(t => now - t < 60);
+  if (arr.length >= (max || 2)) { recent[kind] = arr; return; }
+  arr.push(now); recent[kind] = arr; play(kind, o);
+}
+const panOf = c => (c - (N - 1) / 2) / ((N - 1) / 2) * .45;
+const sPop = (combo, pan) => {
+  play('pop', { rate: 1 + Math.min(combo - 1, 6) * .07, pan });
+  play('pop', { rate: 1.25 + Math.random() * .2, vol: .35, delay: .025 + Math.random() * .03, pan: -pan * .5 });  // ikinci kırık parça
+  if (combo >= 3) play('popBig', { vol: .6, pan });
+};
+const sSub = (v) => tone(120, 38, .5, .32 * (v || 1), 'sine');    // patlamanın göğüste hissedilen alt basısı
 const sSwap = () => play('swap');
 const sBad = () => play('bad');
 const sCoin = () => play('coin');
-const sBoom = () => { play('smash'); play('stack', { delay: .08 }); duckMusic(.5); };
+const sBoom = () => { play('thump'); play('smash', { delay: .015 }); play('stack', { delay: .08, vol: .7 }); sSub(); duckMusic(.5); };
 
 // ---------- Fon müziği (kodla üretilir; ses dosyası yok, telif sorunu yok) ----------
 const music = { on:false, timer:0, next:0, step:0, out:null, bus:null };
@@ -1609,7 +1654,7 @@ async function onBoost(k) {
 async function useHammer(r, c) {
   busy = true; setAim(null); stopHint();
   save.inv.hammer--; persist(); renderBoosts();
-  flash(r, c); quake(); sBoom(); buzz(40);
+  flash(r, c); quake(); play('thump', { pan: panOf(c) }); play('popBig', { delay: .02, pan: panOf(c) }); sSub(.7); duckMusic(.4); buzz(40);
   await popCells(new Set([r * N + c]), { power: 2, noBanner: true, smash: true });
   await resolve(2);
   await afterTurn();
@@ -1622,7 +1667,7 @@ async function trySwap(r1, c1, r2, c2) {
   const A = grid[r1][c1], B = grid[r2][c2];
   if (A.stone || B.stone) {                                       // taş yerinden oynamaz
     [A, B].filter(t => t.stone).forEach(t => { t.el.classList.remove('hit'); void t.el.offsetWidth; t.el.classList.add('hit'); });
-    sBad(); busy = false; armHint();
+    play('rock', { vol: .45, rate: 1.1 }); busy = false; armHint();
     return;
   }
   grid[r1][c1] = B; grid[r2][c2] = A;
@@ -1655,7 +1700,7 @@ async function specialSwap(A, B, r, c, br, bc) {
   const P = A.sp === 'p' ? A : B.sp === 'p' ? B : null, X = P === A ? B : A;
   const ka = r * N + c, kB = br * N + bc;
   if (P && X.sp === 'p') {                                         // prizma + prizma: bütün tahta
-    banner(T.spMega); sBoom(); play('smash', { delay: .1 }); buzz([50, 30, 90]);
+    banner(T.spMega); sBoom(); play('prism', { delay: .05 }); play('smash', { delay: .1 }); sSub(1.3); buzz([50, 30, 90]);
     for (let i = 0; i < N * N; i++) all.add(i);
     A.fired = B.fired = true;
     specialFx({ r, c, sp: 'b', color: -1, area: [] }); specialFx({ r: br, c: bc, sp: 'b', color: -1, area: [] });
@@ -1663,7 +1708,7 @@ async function specialSwap(A, B, r, c, br, bc) {
     return;
   }
   if (P && X.sp) {                                                 // prizma + ışın/bomba: o rengin hepsi özel bloğa döner
-    banner(T.spMega); play('popBig'); buzz([30, 30, 60]);
+    banner(T.spMega); play('prism'); play('forge', { rate: 1.2, delay: .08 }); buzz([30, 30, 60]);
     const col = X.color, targets = [];
     grid.forEach((row, rr) => row.forEach((t, cc) => { if (t && !t.sp && t.color === col) targets.push([t, rr, cc]); }));
     specialFx({ r: P === A ? r : br, c: P === A ? c : bc, sp: 'p', color: col, area: targets.map(([, rr, cc]) => rr * N + cc) });
@@ -1676,7 +1721,7 @@ async function specialSwap(A, B, r, c, br, bc) {
   }
   if (P) {                                                         // prizma + normal taş: o rengin hepsi
     P.target = X.color;
-    play('popBig'); buzz([30, 20, 50]);
+    play('prism', { pan: panOf(c) }); play('popBig', { delay: .05 }); buzz([30, 20, 50]);
     add([ka, kB]);
     await popCells(all, { power: 2, noBanner: true, bonus: 100 });
     return;
@@ -1737,8 +1782,14 @@ async function popCells(set, o) {
   const fired = expand(set, keep);                       // kümedeki özel bloklar zincirleme patlar
   const power = Math.min((o.power || 0) + (fired.length ? 1 : 0), 4);
   fired.forEach(f => specialFx(f));
-  if (fired.some(f => f.sp === 'b' || f.sp === 'p')) { sBoom(); buzz([40, 30, 70]); }
-  else if (fired.length) { play('popBig'); play('smash', { vol: .5, delay: .05 }); }
+  fired.slice(0, 4).forEach((f, i) => {
+    const d = i * .06, pan = panOf(f.c);
+    if (f.sp === 'h' || f.sp === 'v') { play('beam', { delay: d, pan: f.sp === 'h' ? 0 : pan }); play('popBig', { delay: d + .02, vol: .7, pan }); }
+    else if (f.sp === 'b') { play('thump', { delay: d, pan }); play('smash', { delay: d + .015, pan }); if (!i) sSub(); }
+    else if (f.sp === 'p') { play('prism', { delay: d }); play('popBig', { delay: d + .1, vol: .6 }); play('pop', { rate: 1.5, vol: .5, delay: d + .18 }); }
+  });
+  if (fired.some(f => f.sp === 'b' || f.sp === 'p')) { duckMusic(.5); buzz([40, 30, 70]); }
+  else if (fired.length) buzz([25, 20, 40]);
   // yeni özel bloklar: taş yerinde kalır, dönüşür
   keep.forEach((p, k) => {
     const t = grid[Math.floor(k / N)][k % N];
@@ -1746,7 +1797,11 @@ async function popCells(set, o) {
     if (p.sp === 'p' && def && def.type === 'collect' && t.color === def.color) collected++;
     setSp(t, p.sp, p.color); spIntro(p.sp);
   });
-  if (keep.size) { tone(660, 1320, .25, .09, 'triangle'); misAdd('special', keep.size); }
+  if (keep.size) {
+    const k0 = keep.keys().next().value, pan = panOf(k0 % N);
+    play('forge', { rate: 1.3, pan }); play('prism', { rate: 1.6, vol: .3, delay: .04, pan });
+    misAdd('special', keep.size);
+  }
   // taşlar doğrudan patlamaz: kümedeki ya da patlayan bir taşın yanındaki taş bir vuruş alır
   const tAt = k => grid[Math.floor(k / N)][k % N];
   const hit = new Set();
@@ -1766,7 +1821,11 @@ async function popCells(set, o) {
     t.el.className = 'tile stone hp' + t.stone + ' hit';
     burst(Math.floor(k / N), k % N, -2, 0);
   });
-  if (hit.size) play('bad', { vol: .8 });
+  hit.forEach(k => {
+    const t = tAt(k), pan = panOf(k % N);
+    if (t.stone > 0) playL('rock', { vol: .85, pan });
+    else { playL('rock', { rate: .84, pan }); playL('rubble', { delay: .05, pan }, 3); playL('rubble', { delay: .12, vol: .7, rate: .9, pan }, 3); }
+  });
   keep.forEach((p, k) => hitIce(Math.floor(k / N), k % N));
   const pts = (set.size * 10 + (o.bonus || 0) + fired.length * 50 + stoneHits * 20) * combo;
   score += pts;
@@ -1798,7 +1857,7 @@ async function popCells(set, o) {
     setTimeout(() => burst(r, c, t.color, power), delay + 90);
     setTimeout(() => t.el.remove(), delay + 300);
   });
-  sPop(combo);
+  sPop(combo, panOf(cc));
   buzz(power >= 2 ? 35 : 12);
   updateUI(['score']);
   await wait(270 + maxDelay);
